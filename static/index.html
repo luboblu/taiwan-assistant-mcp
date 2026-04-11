@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>台灣生活小助手</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    /* ── Reset & Base ───────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --primary: #1d6fa4;
+      --primary-dark: #155a87;
+      --primary-light: #e8f3fb;
+      --accent: #e8534a;
+      --text: #1a202c;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 12px;
+      --shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC",
+                   "Noto Sans TC", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, var(--primary) 0%, #0e4c7a 100%);
+      color: #fff;
+      padding: 24px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    header .flag { font-size: 2.4rem; }
+    header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: 0.5px; }
+    header p  { font-size: 0.85rem; opacity: 0.8; margin-top: 2px; }
+
+    /* ── Layout ─────────────────────────────────────── */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px 20px;
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    /* ── Sidebar Nav ─────────────────────────────────── */
+    nav {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: sticky;
+      top: 20px;
+    }
+    nav .nav-section {
+      padding: 10px 12px 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    nav button {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 16px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: var(--text);
+      text-align: left;
+      transition: background 0.15s, color 0.15s;
+      border-left: 3px solid transparent;
+    }
+    nav button:hover { background: var(--primary-light); }
+    nav button.active {
+      background: var(--primary-light);
+      color: var(--primary);
+      font-weight: 600;
+      border-left-color: var(--primary);
+    }
+    nav button .icon { font-size: 1.1rem; width: 22px; text-align: center; }
+
+    /* ── Main Panel ──────────────────────────────────── */
+    main { display: flex; flex-direction: column; gap: 20px; }
+
+    .panel {
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .panel.active { display: flex; }
+
+    /* ── Card ────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+    .card h2 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── Form ────────────────────────────────────────── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    input[type="text"], input[type="number"], select {
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.92rem;
+      color: var(--text);
+      background: #f8fafc;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      width: 100%;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(29,111,164,0.12);
+      background: #fff;
+    }
+    .range-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    input[type="range"] {
+      flex: 1;
+      accent-color: var(--primary);
+    }
+    .range-val {
+      min-width: 28px;
+      text-align: right;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    /* ── Button ──────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 22px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-primary:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    /* ── Result ──────────────────────────────────────── */
+    .result-box {
+      background: #f8fafc;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      min-height: 120px;
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+    .result-placeholder {
+      color: var(--muted);
+      font-style: italic;
+      text-align: center;
+      padding: 40px 0;
+    }
+    .result-box.loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--muted);
+    }
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2.5px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Markdown Output ─────────────────────────────── */
+    .result-box h1 { font-size: 1.2rem; color: var(--primary); margin-bottom: 12px; }
+    .result-box h2 { font-size: 1rem; color: #2d3748; margin: 14px 0 6px; }
+    .result-box h3 { font-size: 0.92rem; color: #4a5568; margin: 10px 0 4px; }
+    .result-box ul, .result-box ol { padding-left: 20px; }
+    .result-box li { margin: 3px 0; }
+    .result-box p  { margin: 6px 0; }
+    .result-box strong { color: var(--text); }
+    .result-box code {
+      background: #e8f3fb;
+      color: var(--primary-dark);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.85em;
+    }
+    .result-box hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+    .result-error { color: var(--accent); }
+
+    /* ── Responsive ──────────────────────────────────── */
+    @media (max-width: 768px) {
+      .container { grid-template-columns: 1fr; }
+      nav { position: static; display: flex; overflow-x: auto; }
+      nav button { white-space: nowrap; border-left: none; border-bottom: 3px solid transparent; }
+      nav button.active { border-bottom-color: var(--primary); border-left: none; }
+      .nav-section { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="flag">🇹🇼</div>
+  <div>
+    <h1>台灣生活小助手</h1>
+    <p>整合中央氣象局・交通部 TDX・Google 行事曆</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ── 側邊導覽 ── -->
+  <nav>
+    <div class="nav-section">天氣</div>
+    <button class="active" onclick="switchPanel('weather-forecast', this)">
+      <span class="icon">🌤</span> 縣市天氣預報
+    </button>
+    <button onclick="switchPanel('weather-obs', this)">
+      <span class="icon">🌡</span> 即時氣象觀測
+    </button>
+
+    <div class="nav-section">交通</div>
+    <button onclick="switchPanel('bus-routes', this)">
+      <span class="icon">🚌</span> 公車路線查詢
+    </button>
+    <button onclick="switchPanel('bus-arrival', this)">
+      <span class="icon">🚏</span> 公車即時到站
+    </button>
+    <button onclick="switchPanel('bus-stop', this)">
+      <span class="icon">📍</span> 查站牌公車
+    </button>
+    <button onclick="switchPanel('train', this)">
+      <span class="icon">🚂</span> 台鐵時刻表
+    </button>
+    <button onclick="switchPanel('thsr', this)">
+      <span class="icon">🚄</span> 高鐵時刻表
+    </button>
+
+    <div class="nav-section">行事曆</div>
+    <button onclick="switchPanel('cal-list', this)">
+      <span class="icon">📋</span> 列出行事曆
+    </button>
+    <button onclick="switchPanel('cal-events', this)">
+      <span class="icon">📅</span> 行事曆事件
+    </button>
+  </nav>
+
+  <!-- ── 主內容 ── -->
+  <main>
+
+    <!-- 縣市天氣預報 -->
+    <div id="panel-weather-forecast" class="panel active">
+      <div class="card">
+        <h2>🌤 縣市天氣預報</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>縣市名稱</label>
+            <input type="text" id="wf-city" value="台北" placeholder="例如：台北、高雄、花蓮" />
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="query('weather-forecast')">
+          &#x1F50D; 查詢天氣預報
+        </button>
+      </div>
+      <div class="card">
+        <h2>查詢結果</h2>
+        <div id="result-weather-forecast" class="result-box">
+          <div class="result-placeholder">輸入縣市名稱後點擊查詢</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 即時氣象觀測 -->
+    <div id="panel-weather-obs" class="panel">
+      <div class="card">
+        <h2>🌡 即時氣象觀測</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>測站名稱關鍵字</label>
+            <input type="text" id="wo-station" placeholder="留空查全台，例如：淡水" />
+          </div>
+          <div class="form-group">
+            <label>顯示筆數</label>
+            <div class="range-row">
+              <input type="range" id="wo-limit" min="1" max="50" value="10"
+                     oninput="document.getElementById('wo-limit-val').textContent=this.value" />
+              <span class="range-val" id="wo-limit-val">10</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="query('weather-obs')">
+          &#x1F50D; 查詢即時觀測
+        </button>
+      </div>
+      <div class="card">
+        <h2>查詢結果</h2>
+        <div id="result-weather-obs" class="result-box">
+          <div class="result-placeholder">點擊查詢即可顯示即時觀測資料</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 公車路線 -->
+    <div id="panel-bus-routes" class="panel">
+      <div class="card">
+        <h2>🚌 公車路線查詢</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>城市名稱</label>
+            <input type="text" id="br-city" value="台北" placeholder="例如：台北、高雄" />
+          </div>
+          <div class="form-group">
+            <label>路線關鍵字（可留空）</label>
+            <input type="text" id="br-route" placeholder="例如：299、0東、紅10" />
+          </div>
+          <div class="form-group">
+            <label>顯示筆數</label>
+            <div class="range-row">
+              <input type="range" id="br-limit" min="1" max="50" value="10"
+                     oninput="document.getElementById('br-limit-val').textContent=this.value" />
+              <span class="range-val" id="br-limit-val">10</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="query('bus-routes')">
+          &#x1F50D; 查詢公車路線
+        </button>
+      </div>
+      <div class="card">
+        <h2>查詢結果</h2>
+        <div id="result-bus-routes" class="result-box">
+          <div class="result-placeholder">輸入城市名稱後點擊查詢</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 公車到站 -->
+    <div id="panel-bus-arrival" class="panel">
+      <div class="card">
+        <h2>🚏 公車即時到站</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>城市名稱</label>
+            <input type="text" id="ba-city" value="台北" placeholder="例如：台北、高雄" />
+          </div>
+          <div class="form-group">
+            <label>路線名稱</label>
+            <input type="text" id="ba-route" placeholder="例如：299、0東、紅10" />
+          </div>
+          <div class="form-group">
+            <label>篩選站牌（可留空）</label>
+            <input type="text" id="ba-stop" placeholder="例如：台北車站" />
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="query('bus-arrival')">
+          &#x1F50D; 查詢即時到站
+        </button>
+      </div>
+      <div class="card">
+        <h2>查詢結果</h2>
+        <div id="result-bus-arrival" class="result-box">
+          <div class="result-placeholder">輸入城市與路線名稱後點擊查詢</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 查站牌 -->
+    <div id="panel-bus-stop" class="panel">
+      <!-- Step 1: 搜尋站牌 -->
+      <div class="card">
+        <h2>📍 查站牌公車</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>城市名稱</label>
+            <select id="bs-city">
+              <option>台北</option><option>新北</option><option>桃園</option>
+              <option>台中</option><option>台南</option><option>高雄</option>
+              <option>基隆</option><option>新竹市</option><option>嘉義市</option>
+              <option>宜蘭</option><option>屏東</option><option>花蓮</option><option>台東</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>區（可留空）</label>
+            <input type="text" id="bs-district" placeholder="例如：板橋、三重、中正" />
+          </div>
+          <div class="form-group">
+            <label>站牌關鍵字</label>
+            <input type="text" id="bs-keyword" placeholder="例如：中正路、火車站" />
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="searchStops()">
+          &#x1F50D; 搜尋站牌
+        </button>
+      </div>
+
+      <!-- Step 2: 選擇站牌 -->
+      <div class="card" id="bs-pick-card" style="display:none;">
+        <h2>選擇站牌</h2>
+        <div id="bs-stop-list"></div>
+      </div>
+
+      <!-- Step 3: 到站資訊 -->
+      <div class="card" id="bs-arrival-card" style="display:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+          <h2 style="margin:0;" id="bs-arrival-title">到站資訊</h2>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="btn" style="background:#f1f5f9;color:var(--text);padding:7px 14px;font-size:0.85rem;"
+                    onclick="document.getElementById('bs-arrival-card').style.display='none';">
+              ← 重新選站牌
+            </button>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.88rem;
+                          color:var(--muted);text-transform:none;letter-spacing:0;">
+              <input type="checkbox" id="bs-autorefresh" onchange="toggleAutoRefresh()" />
+              每 30 秒自動更新
+            </label>
+            <span id="bs-countdown" style="font-size:0.82rem;color:var(--primary);display:none;"></span>
+          </div>
+        </div>
+        <div id="result-bus-stop" class="result-box">
+          <div class="result-placeholder">選擇站牌後顯示到站資訊</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 台鐵 -->
+    <div id="panel-train" class="panel">
+      <div class="card">
+        <h2>🚂 台鐵時刻表</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>出發站</label>
+            <select id="tr-origin">
+              <option>基隆</option><option selected>台北</option><option>板橋</option>
+              <option>桃園</option><option>中壢</option><option>新竹</option>
+              <option>竹南</option><option>苗栗</option><option>台中</option>
+              <option>彰化</option><option>員林</option><option>斗六</option>
+              <option>嘉義</option><option>新營</option><option>台南</option>
+              <option>高雄</option><option>屏東</option><option>枋寮</option>
+              <option>宜蘭</option><option>羅東</option><option>花蓮</option>
+              <option>玉里</option><option>台東</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>目的站</label>
+            <select id="tr-dest">
+              <option>基隆</option><option>台北</option><option>板橋</option>
+              <option>桃園</option><option>中壢</option><option>新竹</option>
+              <option>竹南</option><option>苗栗</option><option>台中</option>
+              <option>彰化</option><option>員林</option><option>斗六</option>
+              <option>嘉義</option><option>新營</option><option>台南</option>
+              <option selected>高雄</option><option>屏東</option><option>枋寮</option>
+              <option>宜蘭</option><option>羅東</option><option>花蓮</option>
+              <option>玉里</option><option>台東</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>日期（留空為今天）</label>
+            <input type="date" id="tr-date" />
+          </div>
+          <div class="form-group">
+            <label>顯示班次數</label>
+            <div class="range-row">
+              <input type="range" id="tr-limit" min="1" max="30" value="10"
+                     oninput="document.getElementById('tr-limit-val').textContent=this.value" />
+              <span class="range-val" id="tr-limit-val">10</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="query('train')">
+          &#x1F50D; 查詢台鐵時刻
+        </button>
+      </div>
+      <div class="card">
+        <h2>查詢結果</h2>
+        <div id="result-train" class="result-box">
+          <div class="result-placeholder">輸入出發站與目的站後點擊查詢</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 高鐵 -->
+    <div id="panel-thsr" class="panel">
+      <div class="card">
+        <h2>🚄 高鐵時刻表</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>出發站</label>
+            <select id="th-origin">
+              <option>南港</option><option selected>台北</option>
+              <option>板橋</option><option>桃園</option><option>新竹</option>
+              <option>苗栗</option><option>台中</option><option>彰化</option>
+              <option>雲林</option><option>嘉義</option><option>台南</option>
+              <option>左營</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>目的站</label>
+            <select id="th-dest">
+              <option>南港</option><option>台北</option>
+              <option>板橋</option><option>桃園</option><option>新竹</option>
+              <option>苗栗</option><option>台中</option><option>彰化</option>
+              <option>雲林</option><option>嘉義</option><option>台南</option>
+              <option selected>左營</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>日期（留空為今天）</label>
+            <input type="date" id="th-date" />
+          </div>
+          <div class="form-group">
+            <label>顯示班次數</label>
+            <div class="range-row">
+              <input type="range" id="th-limit" min="1" max="30" value="10"
+                     oninput="document.getElementById('th-limit-val').textContent=this.value" />
+              <span class="range-val" id="th-limit-val">10</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="query('thsr')">
+          &#x1F50D; 查詢高鐵時刻
+        </button>
+      </div>
+      <div class="card">
+        <h2>查詢結果</h2>
+        <div id="result-thsr" class="result-box">
+          <div class="result-placeholder">選擇出發站與目的站後點擊查詢</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 列出行事曆 -->
+    <div id="panel-cal-list" class="panel">
+      <div class="card">
+        <h2>📋 列出所有 Google 行事曆</h2>
+        <p style="color:var(--muted);font-size:0.88rem;margin-bottom:16px;">
+          第一次使用時會開啟瀏覽器進行 Google 授權，完成後即可查詢。
+        </p>
+        <button class="btn btn-primary" onclick="query('cal-list')">
+          &#x1F4CB; 列出行事曆
+        </button>
+      </div>
+      <div class="card">
+        <h2>查詢結果</h2>
+        <div id="result-cal-list" class="result-box">
+          <div class="result-placeholder">點擊「列出行事曆」開始查詢</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 行事曆事件 -->
+    <div id="panel-cal-events" class="panel">
+      <div class="card">
+        <h2>📅 行事曆事件查詢</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>行事曆 ID</label>
+            <input type="text" id="ge-calid" value="primary" placeholder="primary" />
+          </div>
+          <div class="form-group">
+            <label>關鍵字（可留空）</label>
+            <input type="text" id="ge-query" placeholder="例如：會議、生日" />
+          </div>
+          <div class="form-group">
+            <label>查詢未來幾天</label>
+            <div class="range-row">
+              <input type="range" id="ge-ahead" min="1" max="90" value="7"
+                     oninput="document.getElementById('ge-ahead-val').textContent=this.value" />
+              <span class="range-val" id="ge-ahead-val">7</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>查詢過去幾天</label>
+            <div class="range-row">
+              <input type="range" id="ge-back" min="0" max="30" value="0"
+                     oninput="document.getElementById('ge-back-val').textContent=this.value" />
+              <span class="range-val" id="ge-back-val">0</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>最多筆數</label>
+            <div class="range-row">
+              <input type="range" id="ge-max" min="1" max="100" value="20"
+                     oninput="document.getElementById('ge-max-val').textContent=this.value" />
+              <span class="range-val" id="ge-max-val">20</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="query('cal-events')">
+          &#x1F50D; 查詢事件
+        </button>
+      </div>
+      <div class="card">
+        <h2>查詢結果</h2>
+        <div id="result-cal-events" class="result-box">
+          <div class="result-placeholder">設定查詢條件後點擊查詢</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // ── 切換面板 ──────────────────────────────────────────────
+  function switchPanel(id, btn) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-' + id).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  // ── 顯示 loading ─────────────────────────────────────────
+  function setLoading(id) {
+    const el = document.getElementById('result-' + id);
+    el.className = 'result-box loading';
+    el.innerHTML = '<div class="spinner"></div><span>查詢中…</span>';
+  }
+
+  // ── 渲染結果 ──────────────────────────────────────────────
+  function setResult(id, text) {
+    const el = document.getElementById('result-' + id);
+    el.className = 'result-box';
+    if (text.startsWith('Error:')) {
+      el.innerHTML = `<div class="result-error">⚠️ ${text}</div>`;
+    } else {
+      el.innerHTML = marked.parse(text);
+    }
+  }
+
+  // ── API 呼叫 ──────────────────────────────────────────────
+  async function callApi(endpoint, body) {
+    const opts = body
+      ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+      : { method: 'GET' };
+    const res = await fetch(endpoint, opts);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return data.result;
+  }
+
+  // ── 各功能查詢 ────────────────────────────────────────────
+  const handlers = {
+    'weather-forecast': async () => {
+      const city = document.getElementById('wf-city').value.trim();
+      if (!city) return '請輸入縣市名稱。';
+      return await callApi('/api/weather/forecast', { city });
+    },
+    'weather-obs': async () => {
+      const station_name = document.getElementById('wo-station').value.trim() || null;
+      const limit = +document.getElementById('wo-limit').value;
+      return await callApi('/api/weather/observation', { station_name, limit });
+    },
+    'bus-routes': async () => {
+      const city = document.getElementById('br-city').value.trim();
+      const route_name = document.getElementById('br-route').value.trim() || null;
+      const limit = +document.getElementById('br-limit').value;
+      if (!city) return '請輸入城市名稱。';
+      return await callApi('/api/bus/routes', { city, route_name, limit });
+    },
+    'bus-arrival': async () => {
+      const city = document.getElementById('ba-city').value.trim();
+      const route_name = document.getElementById('ba-route').value.trim();
+      const stop_name = document.getElementById('ba-stop').value.trim() || null;
+      if (!city || !route_name) return '請輸入城市與路線名稱。';
+      return await callApi('/api/bus/arrival', { city, route_name, stop_name });
+    },
+    'train': async () => {
+      const origin = document.getElementById('tr-origin').value;
+      const destination = document.getElementById('tr-dest').value;
+      const date = document.getElementById('tr-date').value || null;
+      const limit = +document.getElementById('tr-limit').value;
+      if (!origin || !destination) return '請輸入出發站與目的站。';
+      return await callApi('/api/train/schedule', { origin, destination, date, limit });
+    },
+    'thsr': async () => {
+      const origin = document.getElementById('th-origin').value;
+      const destination = document.getElementById('th-dest').value;
+      const date = document.getElementById('th-date').value || null;
+      const limit = +document.getElementById('th-limit').value;
+      return await callApi('/api/thsr/schedule', { origin, destination, date, limit });
+    },
+    'cal-list': async () => {
+      return await callApi('/api/calendar/list', null);
+    },
+    'cal-events': async () => {
+      const calendar_id = document.getElementById('ge-calid').value.trim() || 'primary';
+      const query = document.getElementById('ge-query').value.trim() || null;
+      const days_ahead = +document.getElementById('ge-ahead').value;
+      const days_back  = +document.getElementById('ge-back').value;
+      const max_results = +document.getElementById('ge-max').value;
+      return await callApi('/api/calendar/events', { calendar_id, query, days_ahead, days_back, max_results });
+    },
+  };
+
+  async function query(id) {
+    setLoading(id);
+    try {
+      const result = await handlers[id]();
+      setResult(id, result);
+    } catch (e) {
+      setResult(id, 'Error: 無法連接後端伺服器，請確認 web_app.py 正在執行中。');
+    }
+  }
+
+  // ── 站牌查詢（兩步驟）────────────────────────────────────
+  let _stopTimer = null;
+  let _stopCountdown = null;
+  let _currentStop = null; // { uid, name, city }
+
+  const urgencyStyle = {
+    now:     { bg: '#fff0f0', border: '#e8534a', badge: '#e8534a' },
+    soon:    { bg: '#fff8e1', border: '#f39c12', badge: '#f39c12' },
+    normal:  { bg: '#f0f8ff', border: '#1d6fa4', badge: '#1d6fa4' },
+    unknown: { bg: '#f8fafc', border: '#cbd5e0', badge: '#94a3b8' },
+    disabled:{ bg: '#f1f5f9', border: '#e2e8f0', badge: '#94a3b8' },
+  };
+
+  // Step 1: 搜尋站牌關鍵字
+  async function searchStops() {
+    const city     = document.getElementById('bs-city').value;
+    const district = document.getElementById('bs-district').value.trim() || null;
+    const kw       = document.getElementById('bs-keyword').value.trim();
+    if (!kw) { alert('請輸入站牌關鍵字'); return; }
+
+    const listEl  = document.getElementById('bs-stop-list');
+    const card    = document.getElementById('bs-pick-card');
+    const arrCard = document.getElementById('bs-arrival-card');
+
+    card.style.display = 'block';
+    arrCard.style.display = 'none';
+    listEl.innerHTML = '<div style="display:flex;gap:8px;align-items:center;color:var(--muted)"><div class="spinner"></div>搜尋中…</div>';
+
+    try {
+      const res  = await fetch('/api/bus/stop-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ city, keyword: kw, district }),
+      });
+      const data = await res.json();
+
+      if (data.error) { listEl.innerHTML = `<div class="result-error">⚠️ ${data.error}</div>`; return; }
+      if (!data.stops.length) { listEl.innerHTML = `<div class="result-placeholder">找不到含「${kw}」的站牌</div>`; return; }
+
+      let html = `<div style="font-size:0.82rem;color:var(--muted);margin-bottom:12px;">
+        找到 <strong>${data.stops.length}</strong> 個站牌，點選查看到站資訊：</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">`;
+
+      for (const s of data.stops) {
+        const addr = s.address
+          ? `<span style="color:var(--muted);font-size:0.8rem;">${s.address}</span>`
+          : `<span style="color:#f39c12;font-size:0.78rem;">地址未知</span>`;
+        const mapLink = (s.lat && s.lon)
+          ? `<a href="https://maps.google.com/?q=${s.lat},${s.lon}" target="_blank"
+               onclick="event.stopPropagation()"
+               style="font-size:0.78rem;color:var(--primary);text-decoration:none;
+                      padding:2px 8px;border:1px solid var(--primary);border-radius:4px;
+                      white-space:nowrap;">🗺 地圖</a>`
+          : '';
+        const safeName = s.name.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        html += `
+          <div style="display:flex;align-items:center;border:1.5px solid var(--border);
+                      border-radius:10px;background:#fff;overflow:hidden;
+                      transition:border-color 0.15s;"
+               onmouseover="this.style.borderColor='var(--primary)'"
+               onmouseout="this.style.borderColor='var(--border)'">
+            <button onclick='selectStop(${JSON.stringify(s.uids)},"${safeName}","${city}")'
+              style="flex:1;display:flex;flex-direction:column;gap:3px;padding:11px 16px;
+                     border:none;background:none;cursor:pointer;text-align:left;">
+              <span style="font-weight:600;font-size:0.95rem;">📍 ${s.name}</span>
+              ${addr}
+            </button>
+            <div style="display:flex;align-items:center;gap:8px;padding:0 14px;">
+              ${mapLink}
+              <span style="color:var(--primary);font-size:0.82rem;white-space:nowrap;cursor:pointer;"
+                    onclick='selectStop(${JSON.stringify(s.uids)},"${safeName}","${city}")'>
+                查到站 →
+              </span>
+            </div>
+          </div>`;
+      }
+      html += '</div>';
+      listEl.innerHTML = html;
+    } catch {
+      listEl.innerHTML = '<div class="result-error">⚠️ 無法連接後端伺服器</div>';
+    }
+  }
+
+  // Step 2: 選定站牌，查 ETA
+  function selectStop(uids, name, city) {
+    _currentStop = { uids, name, city };
+    document.getElementById('bs-arrival-title').textContent = `📍 ${name} 到站資訊`;
+    document.getElementById('bs-arrival-card').style.display = 'block';
+    document.getElementById('bs-arrival-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    queryStop();
+  }
+
+  async function queryStop() {
+    if (!_currentStop) return;
+    const el = document.getElementById('result-bus-stop');
+    el.className = 'result-box loading';
+    el.innerHTML = '<div class="spinner"></div><span>查詢中…</span>';
+
+    try {
+      const res = await fetch('/api/bus/stop-arrival', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          city: _currentStop.city,
+          stop_uids: _currentStop.uids,
+          stop_name: _currentStop.name,
+        }),
+      });
+      const data = await res.json();
+      renderStopResult(data);
+    } catch {
+      el.className = 'result-box';
+      el.innerHTML = '<div class="result-error">⚠️ 無法連接後端伺服器</div>';
+    }
+  }
+
+  function renderStopResult(data) {
+    const el = document.getElementById('result-bus-stop');
+    el.className = 'result-box';
+    if (data.error) { el.innerHTML = `<div class="result-error">⚠️ ${data.error}</div>`; return; }
+    if (!data.routes.length) { el.innerHTML = `<div class="result-placeholder">查無到站資料</div>`; return; }
+
+    const dirGroups = { '去程': [], '返程': [] };
+    data.routes.forEach(r => (dirGroups[r.direction] || dirGroups['去程']).push(r));
+
+    const now = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+    let html = `<div style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;">更新時間：${now}・共 ${data.routes.length} 筆班次</div>`;
+
+    const icons = { now:'🚌', soon:'⏳', normal:'🕐', disabled:'🚫', unknown:'❓' };
+
+    for (const [dir, routes] of Object.entries(dirGroups)) {
+      if (!routes.length) continue;
+      html += `<div style="font-size:0.78rem;font-weight:700;color:var(--muted);letter-spacing:1px;
+                            margin:14px 0 8px;">${dir}（${routes.length} 條路線）</div>
+               <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;">`;
+
+      for (const r of routes) {
+        const s = urgencyStyle[r.urgency] || urgencyStyle.normal;
+        const icon = icons[r.urgency] || '🕐';
+        html += `
+          <div style="background:${s.bg};border:1.5px solid ${s.border};border-radius:10px;
+                      padding:10px 14px;display:flex;align-items:center;gap:10px;min-width:130px;">
+            <span style="font-weight:700;font-size:1rem;">${r.route}</span>
+            <span style="background:${s.badge};color:#fff;font-size:0.75rem;
+                         padding:2px 8px;border-radius:99px;font-weight:600;white-space:nowrap;">
+              ${icon} ${r.eta_text}
+            </span>
+          </div>`;
+      }
+      html += '</div>';
+    }
+    el.innerHTML = html;
+  }
+
+  function toggleAutoRefresh() {
+    const on = document.getElementById('bs-autorefresh').checked;
+    const cdEl = document.getElementById('bs-countdown');
+    clearInterval(_stopTimer); clearInterval(_stopCountdown);
+    if (!on) { cdEl.style.display = 'none'; return; }
+    cdEl.style.display = 'inline';
+    let sec = 30;
+    cdEl.textContent = `下次更新：${sec}s`;
+    _stopCountdown = setInterval(() => { cdEl.textContent = `下次更新：${--sec}s`; if (sec <= 0) sec = 30; }, 1000);
+    _stopTimer = setInterval(() => { queryStop(); sec = 30; }, 30000);
+  }
+
+  // 日期選擇器限制：不能選過去
+  const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+  ['tr-date', 'th-date'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.min = todayStr;
+  });
+
+  // Enter 鍵觸發查詢
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+      const activePanel = document.querySelector('.panel.active');
+      if (activePanel) {
+        const btn = activePanel.querySelector('.btn-primary');
+        if (btn) btn.click();
+      }
+    }
+  });
+</script>
+</body>
+</html>
