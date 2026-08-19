@@ -13,89 +13,164 @@ from __future__ import annotations
 
 import os
 from datetime import date
-from typing import Optional
+from pathlib import Path
+from typing import List, Optional
 
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    load_dotenv(Path(__file__).resolve().parent / ".env")
 except ImportError:
     pass
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+APP_DIR = Path(__file__).resolve().parent
+STATIC_DIR = APP_DIR / "static"
+INDEX_FILE = STATIC_DIR / "index.html"
+
+# server.py reads these values from the environment. Anchor the defaults to
+# this module so launching the web app from another cwd remains portable while
+# still allowing explicit environment-variable overrides.
+if not os.environ.get("GOOGLE_CREDENTIALS_FILE"):
+    os.environ["GOOGLE_CREDENTIALS_FILE"] = str(APP_DIR / "google_credentials.json")
+if not os.environ.get("GOOGLE_TOKEN_FILE"):
+    os.environ["GOOGLE_TOKEN_FILE"] = str(APP_DIR / "google_token.json")
 
 from server import (
     WeatherForecastInput,
     WeatherObservationInput,
+    WeeklyForecastInput,
     BusRouteInput,
     BusArrivalInput,
     TrainScheduleInput,
     THSRScheduleInput,
     CalendarListInput,
     CalendarEventsInput,
+    HolidayCheckInput,
+    HolidayListInput,
+    ExchangeRateInput,
+    GcalCreateEventInput,
+    GcalUpdateEventInput,
+    GcalDeleteEventInput,
+    GcalFindFreeTimeInput,
     weather_get_forecast,
     weather_get_observation,
+    weather_get_weekly_forecast,
+    get_weekly_town_list,
     tdx_get_bus_routes,
     tdx_get_bus_arrival,
     tdx_get_train_schedule,
     tdx_get_thsr_schedule,
     gcal_list_calendars,
     gcal_list_events,
+    holiday_check,
+    holiday_list,
+    get_exchange_rate,
+    gcal_create_event,
+    gcal_update_event,
+    gcal_delete_event,
+    gcal_find_free_time,
     _TDX_CITY_MAP,
     _tdx_get,
     _handle_api_error,
 )
 
-app = FastAPI(title="台灣生活小助手", version="1.0.0")
+app = FastAPI(title="台灣生活小助手", version="1.1.0")
 
 # ── 前端靜態檔案 ──────────────────────────────────────────────
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 @app.get("/")
 async def root():
-    return FileResponse("static/index.html")
+    return FileResponse(str(INDEX_FILE))
+
+
+@app.get("/health")
+async def health():
+    """回傳不含秘密的本地健康狀態；此路由不觸發任何外部服務。"""
+    configured = any(
+        bool(os.environ.get(name))
+        for name in ("CWA_API_KEY", "TDX_CLIENT_ID", "TDX_CLIENT_SECRET")
+    )
+    return {
+        "status": "ok",
+        "service": "taiwan-assistant-web",
+        "version": app.version,
+        "configuration": configured,
+    }
 
 
 # ── Request 模型 ──────────────────────────────────────────────
 
-class WeatherForecastReq(BaseModel):
-    city: str
+class WeatherForecastReq(WeatherForecastInput):
+    city: str = Field(..., min_length=1)
 
-class WeatherObservationReq(BaseModel):
-    station_name: Optional[str] = None
-    limit: int = 10
 
-class BusRoutesReq(BaseModel):
-    city: str
-    route_name: Optional[str] = None
-    limit: int = 10
+class WeatherObservationReq(WeatherObservationInput):
+    pass
 
-class BusArrivalReq(BaseModel):
-    city: str
-    route_name: str
-    stop_name: Optional[str] = None
 
-class TrainScheduleReq(BaseModel):
-    origin: str
-    destination: str
-    date: Optional[str] = None
-    limit: int = 10
+class BusRoutesReq(BusRouteInput):
+    city: str = Field(..., min_length=1)
 
-class THSRScheduleReq(BaseModel):
-    origin: str
-    destination: str
-    date: Optional[str] = None
-    limit: int = 10
 
-class CalendarEventsReq(BaseModel):
-    calendar_id: str = "primary"
-    days_ahead: int = 7
-    days_back: int = 0
-    max_results: int = 20
-    query: Optional[str] = None
+class BusArrivalReq(BusArrivalInput):
+    city: str = Field(..., min_length=1)
+    route_name: str = Field(..., min_length=1)
+
+
+class TrainScheduleReq(TrainScheduleInput):
+    origin: str = Field(..., min_length=1)
+    destination: str = Field(..., min_length=1)
+
+
+class THSRScheduleReq(THSRScheduleInput):
+    origin: str = Field(..., min_length=1)
+    destination: str = Field(..., min_length=1)
+
+
+class CalendarEventsReq(CalendarEventsInput):
+    pass
+
+
+class WeeklyForecastReq(WeeklyForecastInput):
+    county: str = Field(..., min_length=1)
+
+
+class HolidayCheckReq(HolidayCheckInput):
+    pass
+
+
+class HolidayListReq(HolidayListInput):
+    pass
+
+
+class ExchangeRateReq(ExchangeRateInput):
+    pass
+
+
+class CalendarCreateReq(GcalCreateEventInput):
+    summary: str = Field(..., min_length=1)
+    start: str = Field(..., min_length=1)
+    end: str = Field(..., min_length=1)
+
+
+class CalendarUpdateReq(GcalUpdateEventInput):
+    event_id: str = Field(..., min_length=1)
+
+
+class CalendarDeleteReq(GcalDeleteEventInput):
+    event_id: str = Field(..., min_length=1)
+
+
+class CalendarFreeTimeReq(GcalFindFreeTimeInput):
+    time_min: str = Field(..., min_length=1)
+    time_max: str = Field(..., min_length=1)
 
 
 # ── API 路由 ──────────────────────────────────────────────────
@@ -172,6 +247,99 @@ async def api_calendar_events(req: CalendarEventsReq):
     return {"result": result}
 
 
+# ── 一週天氣 / 假日 / 匯率 ────────────────────────────────────
+
+@app.post("/api/weather/weekly")
+async def api_weather_weekly(req: WeeklyForecastReq):
+    result = await weather_get_weekly_forecast(
+        WeeklyForecastInput(county=req.county, town=req.town)
+    )
+    return {"result": result}
+
+
+@app.get("/api/weather/towns")
+async def api_weather_towns(county: str = Query(..., min_length=1)):
+    """回傳某縣市所有鄉鎮 / 行政區名稱（供前端連動下拉）。"""
+    return {"towns": await get_weekly_town_list(county)}
+
+
+@app.post("/api/holiday/check")
+async def api_holiday_check(req: HolidayCheckReq):
+    result = await holiday_check(HolidayCheckInput(date=req.date))
+    return {"result": result}
+
+
+@app.post("/api/holiday/list")
+async def api_holiday_list(req: HolidayListReq):
+    result = await holiday_list(HolidayListInput(year=req.year, month=req.month))
+    return {"result": result}
+
+
+@app.post("/api/exchange")
+async def api_exchange(req: ExchangeRateReq):
+    result = await get_exchange_rate(ExchangeRateInput(currency=req.currency))
+    return {"result": result}
+
+
+# ── Google 行事曆 寫入 / 找空檔 ──────────────────────────────
+
+@app.post("/api/calendar/create")
+async def api_calendar_create(req: CalendarCreateReq):
+    result = await gcal_create_event(
+        GcalCreateEventInput(
+            summary=req.summary,
+            start=req.start,
+            end=req.end,
+            calendar_id=req.calendar_id,
+            location=req.location,
+            description=req.description,
+            attendees=req.attendees,
+            reminders_minutes=req.reminders_minutes,
+        )
+    )
+    return {"result": result}
+
+
+@app.post("/api/calendar/update")
+async def api_calendar_update(req: CalendarUpdateReq):
+    result = await gcal_update_event(
+        GcalUpdateEventInput(
+            event_id=req.event_id,
+            calendar_id=req.calendar_id,
+            summary=req.summary,
+            start=req.start,
+            end=req.end,
+            location=req.location,
+            description=req.description,
+            attendees=req.attendees,
+            reminders_minutes=req.reminders_minutes,
+        )
+    )
+    return {"result": result}
+
+
+@app.post("/api/calendar/delete")
+async def api_calendar_delete(req: CalendarDeleteReq):
+    result = await gcal_delete_event(
+        GcalDeleteEventInput(event_id=req.event_id, calendar_id=req.calendar_id)
+    )
+    return {"result": result}
+
+
+@app.post("/api/calendar/free-time")
+async def api_calendar_free_time(req: CalendarFreeTimeReq):
+    result = await gcal_find_free_time(
+        GcalFindFreeTimeInput(
+            time_min=req.time_min,
+            time_max=req.time_max,
+            duration_minutes=req.duration_minutes,
+            calendar_ids=req.calendar_ids,
+            working_hours_only=req.working_hours_only,
+        )
+    )
+    return {"result": result}
+
+
 # ── 站牌查詢 ──────────────────────────────────────────────────
 
 import re as _re
@@ -183,16 +351,30 @@ def _clean_address(addr: str) -> str:
     return _re.sub(r'[（(][^）)]{1,10}[）)]', '', addr or '').strip()
 
 
+def _escape_odata_string(value: str) -> str:
+    """Escape a value used as an OData string literal."""
+    return value.replace("'", "''")
+
+
 class StopSearchReq(BaseModel):
-    city: str
-    keyword: str
-    district: Optional[str] = None  # 例如「板橋」「三重」
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    city: str = Field(..., min_length=1)
+    keyword: str = Field(..., min_length=1)
+    district: Optional[str] = Field(None, min_length=1)  # 例如「板橋」「三重」
 
 
 class StopArrivalReq(BaseModel):
-    city: str
-    stop_uids: List[str]   # 同一路口可能有多個 UID（不同方向）
-    stop_name: str
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    city: str = Field(..., min_length=1)
+    stop_uids: List[str] = Field(..., min_length=1)  # 同一路口可能有多個 UID（不同方向）
+    stop_name: str = Field(..., min_length=1)
+
+    @field_validator("stop_uids")
+    @classmethod
+    def stop_uids_must_be_non_blank(cls, value: List[str]) -> List[str]:
+        if any(not uid for uid in value):
+            raise ValueError("stop_uids 不可包含空白站牌識別碼")
+        return value
 
 
 @app.post("/api/bus/stop-search")
@@ -201,9 +383,10 @@ async def api_bus_stop_search(req: StopSearchReq):
     if not city_en:
         return {"stops": [], "error": f"不支援城市「{req.city}」"}
     try:
+        keyword = _escape_odata_string(req.keyword)
         data = await _tdx_get(
             f"/v2/Bus/Stop/City/{city_en}",
-            {"$filter": f"contains(StopName/Zh_tw,'{req.keyword}')",
+            {"$filter": f"contains(StopName/Zh_tw,'{keyword}')",
              "$format": "JSON", "$top": 500,
              "$select": "StopUID,StopName,StopAddress,StopPosition"},
         )
@@ -254,16 +437,19 @@ async def api_bus_stop_arrival(req: StopArrivalReq):
 
     try:
         # 用 OR 一次查所有方向的 UID
-        uid_filter = " or ".join(f"StopUID eq '{u}'" for u in req.stop_uids)
+        uid_filter = " or ".join(
+            f"StopUID eq '{_escape_odata_string(uid)}'" for uid in req.stop_uids
+        )
         data = await _tdx_get(
             f"/v2/Bus/EstimatedTimeOfArrival/City/{city_en}",
             {"$filter": uid_filter, "$format": "JSON", "$top": 500},
         )
         # fallback：用站名查
         if not data:
+            stop_name = _escape_odata_string(req.stop_name)
             data = await _tdx_get(
                 f"/v2/Bus/EstimatedTimeOfArrival/City/{city_en}",
-                {"$filter": f"StopName/Zh_tw eq '{req.stop_name}'",
+                {"$filter": f"StopName/Zh_tw eq '{stop_name}'",
                  "$format": "JSON", "$top": 300},
             )
 
@@ -341,4 +527,7 @@ async def api_bus_stop_arrival(req: StopArrivalReq):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("web_app:app", host="0.0.0.0", port=8000, reload=False)
+    # 用 127.0.0.1（localhost）啟動，終端機印出的網址可直接點擊開啟。
+    # 若要讓同網路的手機 / 其他電腦也能連，改回 "0.0.0.0"，
+    # 然後在別的裝置用「這台電腦的區網 IP:8000」連（例如 192.168.x.x:8000）。
+    uvicorn.run("web_app:app", host="127.0.0.1", port=8000, reload=False)

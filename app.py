@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import os
+import re
 from datetime import date
 
 # 載入 .env 環境變數
@@ -25,20 +26,36 @@ import gradio as gr
 from server import (
     WeatherForecastInput,
     WeatherObservationInput,
+    WeeklyForecastInput,
     BusRouteInput,
     BusArrivalInput,
     TrainScheduleInput,
     THSRScheduleInput,
     CalendarListInput,
     CalendarEventsInput,
+    HolidayCheckInput,
+    HolidayListInput,
+    ExchangeRateInput,
+    GcalCreateEventInput,
+    GcalUpdateEventInput,
+    GcalDeleteEventInput,
+    GcalFindFreeTimeInput,
     weather_get_forecast,
     weather_get_observation,
+    weather_get_weekly_forecast,
     tdx_get_bus_routes,
     tdx_get_bus_arrival,
     tdx_get_train_schedule,
     tdx_get_thsr_schedule,
     gcal_list_calendars,
     gcal_list_events,
+    holiday_check,
+    holiday_list,
+    get_exchange_rate,
+    gcal_create_event,
+    gcal_update_event,
+    gcal_delete_event,
+    gcal_find_free_time,
 )
 
 # ============================================================
@@ -124,6 +141,110 @@ async def do_gcal_list_events(
             days_back=days_back,
             max_results=max_results,
             query=query.strip() or None,
+        )
+    )
+
+
+# ── 一週天氣 / 假日 / 匯率 ────────────────────────────────────
+
+async def do_weekly_forecast(county: str, town: str) -> str:
+    if not county.strip():
+        return "請輸入縣市名稱。"
+    return await weather_get_weekly_forecast(
+        WeeklyForecastInput(county=county.strip(), town=town.strip() or None)
+    )
+
+
+async def do_holiday_check(query_date: str) -> str:
+    return await holiday_check(HolidayCheckInput(date=query_date.strip() or None))
+
+
+async def do_holiday_list(year: int, month: int) -> str:
+    return await holiday_list(
+        HolidayListInput(year=int(year), month=int(month) if month else None)
+    )
+
+
+async def do_exchange_rate(currency: str) -> str:
+    return await get_exchange_rate(ExchangeRateInput(currency=currency.strip() or None))
+
+
+# ── Google 行事曆 寫入 / 找空檔 ──────────────────────────────
+
+def _split_emails(text: str):
+    """把逗號 / 空白分隔的 email 字串轉為 list（空則回傳 None）。"""
+    items = [e.strip() for e in re.split(r"[,\s]+", text or "") if e.strip()]
+    return items or None
+
+
+async def do_gcal_create(
+    summary: str, start: str, end: str, calendar_id: str,
+    location: str, description: str, attendees: str, reminders_minutes,
+) -> str:
+    if not summary.strip() or not start.strip() or not end.strip():
+        return "請至少填寫標題、開始時間與結束時間。"
+    return await gcal_create_event(
+        GcalCreateEventInput(
+            summary=summary.strip(),
+            start=start.strip(),
+            end=end.strip(),
+            calendar_id=calendar_id.strip() or "primary",
+            location=location.strip() or None,
+            description=description.strip() or None,
+            attendees=_split_emails(attendees),
+            reminders_minutes=int(reminders_minutes) if reminders_minutes else None,
+        )
+    )
+
+
+async def do_gcal_update(
+    event_id: str, calendar_id: str, summary: str, start: str, end: str,
+    location: str, description: str, attendees: str, reminders_minutes,
+) -> str:
+    if not event_id.strip():
+        return "請輸入要修改的事件 event_id。"
+    return await gcal_update_event(
+        GcalUpdateEventInput(
+            event_id=event_id.strip(),
+            calendar_id=calendar_id.strip() or "primary",
+            summary=summary.strip() or None,
+            start=start.strip() or None,
+            end=end.strip() or None,
+            location=location.strip() or None,
+            description=description.strip() or None,
+            attendees=_split_emails(attendees),
+            reminders_minutes=int(reminders_minutes) if reminders_minutes else None,
+        )
+    )
+
+
+async def do_gcal_delete(event_id: str, calendar_id: str, confirm_delete: bool) -> str:
+    if not confirm_delete:
+        return "請先勾選確認欄位，確認要刪除此不可復原的行事曆事件。"
+    if not event_id.strip():
+        return "請輸入要刪除的事件 event_id。"
+    return await gcal_delete_event(
+        GcalDeleteEventInput(
+            event_id=event_id.strip(),
+            calendar_id=calendar_id.strip() or "primary",
+        )
+    )
+
+
+async def do_gcal_find_free_time(
+    time_min: str, time_max: str, duration_minutes: int,
+    calendar_ids: str, working_hours_only: bool,
+) -> str:
+    if not time_min.strip() or not time_max.strip():
+        return "請輸入搜尋範圍的開始與結束時間（ISO 8601）。"
+    cal_ids = [c.strip() for c in re.split(r"[,\s]+", calendar_ids or "") if c.strip()]
+    return await gcal_find_free_time(
+        GcalFindFreeTimeInput(
+            time_min=time_min.strip(),
+            time_max=time_max.strip(),
+            duration_minutes=int(duration_minutes),
+            calendar_ids=cal_ids or None,
+            working_hours_only=bool(working_hours_only),
         )
     )
 
@@ -290,6 +411,68 @@ with gr.Blocks(title="台灣生活小助手", theme=gr.themes.Soft()) as demo:
                 outputs=[th_out],
             )
 
+        # ── 一週天氣預報 ──────────────────────────────────────
+        with gr.Tab("🌤 一週天氣預報"):
+            gr.Markdown("查詢鄉鎮未來一週逐日預報（資料來源：中央氣象局 F-D0047）")
+            with gr.Row():
+                with gr.Column(scale=1):
+                    wk_county = gr.Textbox(
+                        label="縣市名稱",
+                        placeholder="例如：新北市、台北、高雄",
+                        value="台北",
+                    )
+                    wk_town = gr.Textbox(
+                        label="鄉鎮 / 行政區（可留空顯示代表區）",
+                        placeholder="例如：板橋區、信義區",
+                    )
+                    wk_btn = gr.Button("查詢一週天氣", variant="primary")
+                with gr.Column(scale=2):
+                    wk_out = gr.Markdown()
+            wk_btn.click(do_weekly_forecast, inputs=[wk_county, wk_town], outputs=[wk_out])
+
+        # ── 假日 / 補班 ───────────────────────────────────────
+        with gr.Tab("📆 假日 / 補班"):
+            with gr.Tabs():
+                with gr.Tab("查詢單日"):
+                    gr.Markdown("查詢某日是否為國定假日 / 補班日（免金鑰）")
+                    with gr.Row():
+                        with gr.Column(scale=1):
+                            hc_date = gr.Textbox(
+                                label="日期（留空為今天）",
+                                placeholder=f"格式：YYYY-MM-DD，例如：{TODAY}",
+                            )
+                            hc_btn = gr.Button("查詢", variant="primary")
+                        with gr.Column(scale=2):
+                            hc_out = gr.Markdown()
+                    hc_btn.click(do_holiday_check, inputs=[hc_date], outputs=[hc_out])
+
+                with gr.Tab("列出整年 / 整月"):
+                    gr.Markdown("列出某年（或某月）的國定假日與補班日")
+                    with gr.Row():
+                        with gr.Column(scale=1):
+                            hl_year = gr.Number(label="年份", value=int(TODAY[:4]), precision=0)
+                            hl_month = gr.Slider(
+                                label="月份（0 = 整年）", minimum=0, maximum=12, value=0, step=1
+                            )
+                            hl_btn = gr.Button("列出", variant="primary")
+                        with gr.Column(scale=2):
+                            hl_out = gr.Markdown()
+                    hl_btn.click(do_holiday_list, inputs=[hl_year, hl_month], outputs=[hl_out])
+
+        # ── 匯率 ──────────────────────────────────────────────
+        with gr.Tab("💱 台銀匯率"):
+            gr.Markdown("查詢台灣銀行牌告匯率（現金 / 即期，免金鑰）")
+            with gr.Row():
+                with gr.Column(scale=1):
+                    ex_currency = gr.Textbox(
+                        label="幣別代碼（留空查常用幣別）",
+                        placeholder="例如：USD、JPY、EUR",
+                    )
+                    ex_btn = gr.Button("查詢匯率", variant="primary")
+                with gr.Column(scale=2):
+                    ex_out = gr.Markdown()
+            ex_btn.click(do_exchange_rate, inputs=[ex_currency], outputs=[ex_out])
+
         # ── Google 行事曆 ─────────────────────────────────────
         with gr.Tab("📅 Google 行事曆"):
             with gr.Tabs():
@@ -330,9 +513,106 @@ with gr.Blocks(title="台灣生活小助手", theme=gr.themes.Soft()) as demo:
                         outputs=[ge_out],
                     )
 
+                with gr.Tab("➕ 建立事件"):
+                    gr.Markdown("在行事曆建立新事件（時區預設 Asia/Taipei；只給日期則為全天事件）")
+                    with gr.Row():
+                        with gr.Column(scale=1):
+                            cc_summary = gr.Textbox(label="標題", placeholder="例如：專案會議")
+                            cc_start = gr.Textbox(
+                                label="開始時間", placeholder="2026-07-10T14:00:00 或 2026-07-10"
+                            )
+                            cc_end = gr.Textbox(
+                                label="結束時間", placeholder="2026-07-10T15:00:00 或 2026-07-11"
+                            )
+                            cc_cal = gr.Textbox(label="行事曆 ID", value="primary")
+                            cc_loc = gr.Textbox(label="地點（可留空）")
+                            cc_desc = gr.Textbox(label="說明（可留空）")
+                            cc_att = gr.Textbox(
+                                label="參與者 email（逗號分隔，可留空）",
+                                placeholder="a@x.com, b@y.com",
+                            )
+                            cc_remind = gr.Number(label="提前提醒（分鐘，可留空）", precision=0)
+                            cc_btn = gr.Button("建立事件", variant="primary")
+                        with gr.Column(scale=2):
+                            cc_out = gr.Markdown()
+                    cc_btn.click(
+                        do_gcal_create,
+                        inputs=[cc_summary, cc_start, cc_end, cc_cal, cc_loc, cc_desc, cc_att, cc_remind],
+                        outputs=[cc_out],
+                    )
+
+                with gr.Tab("✏️ 修改事件"):
+                    gr.Markdown("修改既有事件（只更新有填的欄位）。event_id 可從「查詢事件」結果取得。")
+                    with gr.Row():
+                        with gr.Column(scale=1):
+                            cu_id = gr.Textbox(label="event_id（必填）")
+                            cu_cal = gr.Textbox(label="行事曆 ID", value="primary")
+                            cu_summary = gr.Textbox(label="標題（可留空）")
+                            cu_start = gr.Textbox(label="開始時間（可留空）")
+                            cu_end = gr.Textbox(label="結束時間（可留空）")
+                            cu_loc = gr.Textbox(label="地點（可留空）")
+                            cu_desc = gr.Textbox(label="說明（可留空）")
+                            cu_att = gr.Textbox(label="參與者 email（逗號分隔，可留空）")
+                            cu_remind = gr.Number(label="提前提醒（分鐘，可留空）", precision=0)
+                            cu_btn = gr.Button("修改事件", variant="primary")
+                        with gr.Column(scale=2):
+                            cu_out = gr.Markdown()
+                    cu_btn.click(
+                        do_gcal_update,
+                        inputs=[cu_id, cu_cal, cu_summary, cu_start, cu_end, cu_loc, cu_desc, cu_att, cu_remind],
+                        outputs=[cu_out],
+                    )
+
+                with gr.Tab("🗑 刪除事件"):
+                    gr.Markdown(
+                        "⚠️ 刪除無法復原。建議先用「查詢事件」確認內容與 event_id 再刪除。"
+                    )
+                    with gr.Row():
+                        with gr.Column(scale=1):
+                            cd_id = gr.Textbox(label="event_id（必填）")
+                            cd_cal = gr.Textbox(label="行事曆 ID", value="primary")
+                            cd_confirm = gr.Checkbox(
+                                label="我確認要刪除此事件（刪除後無法復原）",
+                                value=False,
+                            )
+                            cd_btn = gr.Button("刪除事件", variant="stop")
+                        with gr.Column(scale=2):
+                            cd_out = gr.Markdown()
+                    cd_btn.click(
+                        do_gcal_delete,
+                        inputs=[cd_id, cd_cal, cd_confirm],
+                        outputs=[cd_out],
+                    )
+
+                with gr.Tab("🕐 找空檔"):
+                    gr.Markdown("在指定範圍內找出符合長度的可用空檔（依 freebusy 計算）")
+                    with gr.Row():
+                        with gr.Column(scale=1):
+                            cf_min = gr.Textbox(
+                                label="開始時間", placeholder="2026-07-10T09:00:00"
+                            )
+                            cf_max = gr.Textbox(
+                                label="結束時間", placeholder="2026-07-10T18:00:00"
+                            )
+                            cf_dur = gr.Slider(
+                                label="需要的空檔（分鐘）", minimum=15, maximum=480, value=60, step=15
+                            )
+                            cf_cals = gr.Textbox(
+                                label="行事曆 ID（逗號分隔，留空為 primary）", value="primary"
+                            )
+                            cf_work = gr.Checkbox(label="只找上班時間 09:00–18:00", value=True)
+                            cf_btn = gr.Button("找空檔", variant="primary")
+                        with gr.Column(scale=2):
+                            cf_out = gr.Markdown()
+                    cf_btn.click(
+                        do_gcal_find_free_time,
+                        inputs=[cf_min, cf_max, cf_dur, cf_cals, cf_work],
+                        outputs=[cf_out],
+                    )
+
 if __name__ == "__main__":
     demo.launch(
-        server_name="0.0.0.0",
+        server_name="127.0.0.1",  # localhost，印出的網址可直接點擊
         server_port=7860,
         share=False,
         inbrowser=True,
