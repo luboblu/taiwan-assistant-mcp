@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>台灣生活小助手</title>
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" crossorigin="anonymous"></script>
+  <script>window.PAGES_API_BASE = '';</script>
   <style>
     /* ── Reset & Base ───────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -335,7 +336,7 @@
     @media (min-width: 769px) { .mobile-tool-select { display: none; } }
   </style>
 </head>
-<body>
+<body data-api-base="">
 
 <header>
   <div class="flag">🇹🇼</div>
@@ -1318,11 +1319,51 @@
   }
 
   // ── API 呼叫 ──────────────────────────────────────────────
+  // API base 可由 ?api=、window.TAIWAN_API_BASE 或 data-api-base 設定。
+  // 未設定時維持本機同源的 /api/... 行為；不接受非 HTTP(S) 或帶帳密的 URL。
+  function normalizeApiBase(value) {
+    const raw = String(value ?? '').trim();
+    if (!raw || raw.length > 2048 || !/^https?:\/\//i.test(raw)) return '';
+    try {
+      const url = new URL(raw);
+      if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return '';
+      url.search = '';
+      url.hash = '';
+      return url.href.replace(/\/+$/, '');
+    } catch {
+      return '';
+    }
+  }
+
+  function resolveApiBase() {
+    const params = new URLSearchParams(window.location.search);
+    const configured = params.has('api')
+      ? params.get('api')
+      : (window.TAIWAN_API_BASE || window.PAGES_API_BASE || document.body?.dataset.apiBase || document.documentElement.dataset.apiBase || '');
+    return normalizeApiBase(configured);
+  }
+
+  const API_BASE = resolveApiBase();
+  const PUBLIC_CALENDAR_MESSAGE = '公開部署目前未啟用 Google Calendar；請在本機模式使用 Calendar，或先完成 Web OAuth 整合。';
+
+  function apiUrl(endpoint) {
+    const path = String(endpoint ?? '');
+    if (!/^\/api(?:\/|$)/.test(path)) throw new Error('Invalid API endpoint');
+    return API_BASE ? `${API_BASE}${path}` : path;
+  }
+
+  async function apiFetch(endpoint, options) {
+    return fetch(apiUrl(endpoint), options);
+  }
+
+  // 方便部署環境檢查目前實際採用的 base；不包含任何金鑰或認證資料。
+  window.TAIWAN_API_BASE_RESOLVED = API_BASE;
+
   async function callApi(endpoint, body) {
     const opts = body
       ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
       : { method: 'GET' };
-    const res = await fetch(endpoint, opts);
+    const res = await apiFetch(endpoint, opts);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return data.result;
@@ -1370,9 +1411,11 @@
       return await callApi('/api/thsr/schedule', { origin, destination, date, limit });
     },
     'cal-list': async () => {
+      if (API_BASE) return PUBLIC_CALENDAR_MESSAGE;
       return await callApi('/api/calendar/list', null);
     },
     'cal-events': async () => {
+      if (API_BASE) return PUBLIC_CALENDAR_MESSAGE;
       const calendar_id = document.getElementById('ge-calid').value.trim() || 'primary';
       const query = document.getElementById('ge-query').value.trim() || null;
       const days_ahead = +document.getElementById('ge-ahead').value;
@@ -1401,6 +1444,7 @@
       return await callApi('/api/exchange', { currency });
     },
     'cal-create': async () => {
+      if (API_BASE) return PUBLIC_CALENDAR_MESSAGE;
       const summary = document.getElementById('cc-summary').value.trim();
       let start = document.getElementById('cc-start').value.trim();
       let end = document.getElementById('cc-end').value.trim();
@@ -1420,6 +1464,7 @@
       });
     },
     'cal-update': async () => {
+      if (API_BASE) return PUBLIC_CALENDAR_MESSAGE;
       const event_id = document.getElementById('cu-id').value.trim();
       if (!event_id) return '請輸入要修改的 event_id。';
       const remind = document.getElementById('cu-remind').value;
@@ -1436,6 +1481,7 @@
       });
     },
     'cal-delete': async () => {
+      if (API_BASE) return PUBLIC_CALENDAR_MESSAGE;
       const event_id = document.getElementById('cd-id').value.trim();
       if (!event_id) return '請輸入要刪除的 event_id。';
       if (!confirm('確定要刪除這個事件嗎？此動作無法復原。')) return '已取消刪除。';
@@ -1445,6 +1491,7 @@
       });
     },
     'cal-free': async () => {
+      if (API_BASE) return PUBLIC_CALENDAR_MESSAGE;
       const time_min = document.getElementById('cf-min').value.trim();
       const time_max = document.getElementById('cf-max').value.trim();
       if (!time_min || !time_max) return '請輸入搜尋範圍的開始與結束時間。';
@@ -1469,7 +1516,7 @@
     const townSel = document.getElementById('wk-town');
     townSel.innerHTML = '<option value="">載入中…</option>';
     try {
-      const res = await fetch('/api/weather/towns?county=' + encodeURIComponent(county));
+      const res = await apiFetch('/api/weather/towns?county=' + encodeURIComponent(county));
       const data = await res.json();
       const towns = data.towns || [];
       let html = '<option value="">（代表行政區）</option>';
@@ -1678,7 +1725,7 @@
     if (dateEl) dateEl.textContent = date;
     if (titleEl) titleEl.textContent = `${city}，今天過得如何？`;
     try {
-      const response = await fetch(`/api/overview?city=${encodeURIComponent(city)}&include_calendar=false`, { signal: _overviewController.signal });
+      const response = await apiFetch(`/api/overview?city=${encodeURIComponent(city)}&include_calendar=false`, { signal: _overviewController.signal });
       const body = await response.json();
       if (!response.ok) throw new Error('overview request failed');
       ['weather', 'holiday', 'exchange'].forEach(name => renderOverviewCard(name, body.cards?.[name]));
@@ -1724,7 +1771,7 @@
     listEl.innerHTML = '<div style="display:flex;gap:8px;align-items:center;color:var(--muted)"><div class="spinner"></div>搜尋中…</div>';
 
     try {
-      const res  = await fetch('/api/bus/stop-search', {
+      const res  = await apiFetch('/api/bus/stop-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ city, keyword: kw, district }),
@@ -1795,7 +1842,7 @@
     el.innerHTML = '<div class="spinner"></div><span>查詢中…</span>';
 
     try {
-      const res = await fetch('/api/bus/stop-arrival', {
+      const res = await apiFetch('/api/bus/stop-arrival', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

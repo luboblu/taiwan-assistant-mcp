@@ -1,0 +1,64 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Prepare public API configuration
+        env:
+          RENDER_API_BASE_URL: ${{ vars.RENDER_API_BASE_URL }}
+        run: |
+          cp -R static site
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from urllib.parse import urlparse
+
+          default_url = "https://taiwan-assistant-mcp.onrender.com"
+          api_base = os.environ.get("RENDER_API_BASE_URL", "").strip() or default_url
+          parsed = urlparse(api_base)
+          if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
+              raise SystemExit("RENDER_API_BASE_URL must be a public HTTP(S) URL without credentials")
+
+          index = Path("site/index.html")
+          content = index.read_text(encoding="utf-8")
+          content = content.replace(
+              "window.PAGES_API_BASE = '';",
+              f"window.PAGES_API_BASE = {json.dumps(api_base)};",
+              1,
+          )
+          index.write_text(content, encoding="utf-8")
+          PY
+
+      - name: Upload static frontend
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ./site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

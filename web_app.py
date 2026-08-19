@@ -25,6 +25,7 @@ except ImportError:
     pass
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -81,7 +82,48 @@ from server import (
     _handle_api_error,
 )
 
+DEFAULT_CORS_ORIGINS = (
+    "http://localhost",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8000",
+)
+
+
+def _load_cors_origins() -> list[str]:
+    """Load an explicit CORS allow-list without permitting a wildcard.
+
+    Render can set ``CORS_ORIGINS`` to a comma-separated list such as
+    ``https://example.github.io,http://localhost:8000``.  A wildcard is
+    rejected instead of silently broadening the deployed API.
+    """
+    raw_origins = os.environ.get("CORS_ORIGINS", "")
+    if not raw_origins.strip():
+        return list(DEFAULT_CORS_ORIGINS)
+
+    origins = [origin.strip().rstrip("/") for origin in raw_origins.split(",")]
+    origins = [origin for origin in origins if origin]
+    if not origins:
+        return list(DEFAULT_CORS_ORIGINS)
+    if "*" in origins:
+        raise ValueError("CORS_ORIGINS 不可使用萬用來源 '*'")
+    return origins
+
+
+CORS_ORIGINS = _load_cors_origins()
+
 app = FastAPI(title="台灣生活小助手", version="1.1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ── 前端靜態檔案 ──────────────────────────────────────────────
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
@@ -591,7 +633,7 @@ async def api_bus_stop_arrival(req: StopArrivalReq):
 
 if __name__ == "__main__":
     import uvicorn
-    # 用 127.0.0.1（localhost）啟動，終端機印出的網址可直接點擊開啟。
-    # 若要讓同網路的手機 / 其他電腦也能連，改回 "0.0.0.0"，
-    # 然後在別的裝置用「這台電腦的區網 IP:8000」連（例如 192.168.x.x:8000）。
-    uvicorn.run("web_app:app", host="127.0.0.1", port=8000, reload=False)
+    # Render 會以 HOST / PORT 環境變數注入服務綁定位址；本機維持安全預設值。
+    host = os.environ.get("HOST", "127.0.0.1")
+    port = int(os.environ.get("PORT", "8000"))
+    uvicorn.run("web_app:app", host=host, port=port, reload=False)

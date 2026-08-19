@@ -64,7 +64,8 @@ class SecurityContractTests(unittest.TestCase):
         )
         for marker in (
             'id="panel-overview"',
-            "fetch(`/api/overview?city=",
+            "apiFetch(`/api/overview?city=",
+            "window.PAGES_API_BASE",
             "localStorage",
             'id="mobile-tool"',
             "function toggleFavoriteCurrent",

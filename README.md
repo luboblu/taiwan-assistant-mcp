@@ -125,6 +125,40 @@ Gradio 仍保留作為相容性 / 備援入口（既有 `app.py` 工作流不受
 python app.py
 ```
 
+## 🆓 免費公開部署：GitHub Pages + Render
+
+本專案已附上 [`render.yaml`](render.yaml) 與 GitHub Pages workflow。建議使用 GitHub Pages 提供免費靜態前端，再使用 Render Free 執行 FastAPI；Render 免費服務閒置後會休眠，首次喚醒可能需要等待一段時間。
+
+### 1. 部署 FastAPI 到 Render
+
+1. 登入 [Render](https://render.com/)，選擇 **New → Blueprint**。
+2. 連接這個 GitHub repository，選擇 `render.yaml`。
+3. 服務方案選 `Free`。
+4. 在 Render 的 Environment Variables / Secrets 設定：
+   - `CWA_API_KEY`
+   - `TDX_CLIENT_ID`
+   - `TDX_CLIENT_SECRET`
+   - 若暫時不啟用 Calendar，不需要設定 Google 憑證。
+5. 部署完成後取得類似 `https://taiwan-assistant-mcp.onrender.com` 的 API 網址。
+
+不要把 API 金鑰、`google_credentials.json` 或 `google_token.json` 寫進 `render.yaml` 或 GitHub。
+
+### 2. 啟用 GitHub Pages
+
+1. 將變更合併到 `main`。
+2. 到 repository 的 **Settings → Pages**，將 Source 設為 **GitHub Actions**。
+3. `Deploy GitHub Pages` workflow 會把 `static/` 發佈到：
+
+   `https://luboblu.github.io/taiwan-assistant-mcp/`
+
+   workflow 預設會把 `https://taiwan-assistant-mcp.onrender.com` 注入前端；若 Render 實際網址不同，請在 repository 的 **Settings → Secrets and variables → Actions → Variables** 建立 `RENDER_API_BASE_URL` 後重新執行 Pages workflow。
+
+4. 也可以用 `api` 參數臨時覆寫 Render API 網址：
+
+   `https://luboblu.github.io/taiwan-assistant-mcp/?api=https%3A%2F%2F你的服務.onrender.com`
+
+前端在沒有公開部署設定時仍使用同源 `/api/...`，所以本機開發方式不變。GitHub Pages 只負責前端；公開模式會明確停用 Google Calendar，因為目前的 OAuth 是本機流程。正式啟用公開 Calendar 前需要再改成 Web OAuth。
+
 ---
 
 ## 🚀 設定到 Claude Desktop
