@@ -5,10 +5,10 @@ google-api-python-client>=2.100.0
 google-auth-httplib2>=0.2.0
 google-auth-oauthlib>=1.1.0
 
-# Web 介面（web_app.py）
+# Web interface
 fastapi>=0.110.0
 uvicorn>=0.29.0
 python-dotenv>=1.0.0
 
-# Gradio 介面（app.py）
+# Legacy Gradio interface
 gradio>=4.0.0,<6.0.0

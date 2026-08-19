@@ -109,7 +109,7 @@ cp .env.example .env
 
 ## 🌐 啟動本機 Web 介面
 
-FastAPI 介面是推薦的瀏覽器入口：
+FastAPI 介面是推薦的瀏覽器入口，提供自訂的響應式工作台（首頁摘要、天氣、交通、行事曆與生活資訊），不依賴 Gradio 作為主要 UI：
 
 ```bash
 python -m uvicorn web_app:app --host 127.0.0.1 --port 8000
@@ -117,11 +117,47 @@ python -m uvicorn web_app:app --host 127.0.0.1 --port 8000
 
 開啟 <http://127.0.0.1:8000>；服務健康狀態可用 <http://127.0.0.1:8000/health> 查看。健康檢查不會呼叫外部 API，也不會顯示任何金鑰內容。
 
-另有 Gradio 替代入口：
+首頁會並行載入天氣、假日與匯率摘要；單一資料來源暫時失敗時，其他卡片仍會顯示。偏好城市、公車站收藏與最近查詢只保存於瀏覽器的 `localStorage`，不會把金鑰或 OAuth 權杖送到前端。首頁聚合資料也可由 `GET /api/overview?city=台北市` 取得；Calendar 摘要必須明確帶上 `include_calendar=true` 才會觸發 OAuth。
+
+Gradio 仍保留作為相容性 / 備援入口（既有 `app.py` 工作流不受影響）：
 
 ```bash
 python app.py
 ```
+
+## 🆓 免費公開部署：GitHub Pages + Render
+
+本專案已附上 [`render.yaml`](render.yaml) 與 GitHub Pages workflow。建議使用 GitHub Pages 提供免費靜態前端，再使用 Render Free 執行 FastAPI；Render 免費服務閒置後會休眠，首次喚醒可能需要等待一段時間。
+
+### 1. 部署 FastAPI 到 Render
+
+1. 登入 [Render](https://render.com/)，選擇 **New → Blueprint**。
+2. 連接這個 GitHub repository，選擇 `render.yaml`。
+3. 服務方案選 `Free`。
+4. 在 Render 的 Environment Variables / Secrets 設定：
+   - `CWA_API_KEY`
+   - `TDX_CLIENT_ID`
+   - `TDX_CLIENT_SECRET`
+   - 若暫時不啟用 Calendar，不需要設定 Google 憑證。
+5. 部署完成後取得類似 `https://taiwan-assistant-mcp.onrender.com` 的 API 網址。
+
+不要把 API 金鑰、`google_credentials.json` 或 `google_token.json` 寫進 `render.yaml` 或 GitHub。
+
+### 2. 啟用 GitHub Pages
+
+1. 將變更合併到 `main`。
+2. 到 repository 的 **Settings → Pages**，將 Source 設為 **GitHub Actions**。
+3. `Deploy GitHub Pages` workflow 會把 `static/` 發佈到：
+
+   `https://luboblu.github.io/taiwan-assistant-mcp/`
+
+   workflow 預設會把 `https://taiwan-assistant-mcp.onrender.com` 注入前端；若 Render 實際網址不同，請在 repository 的 **Settings → Secrets and variables → Actions → Variables** 建立 `RENDER_API_BASE_URL` 後重新執行 Pages workflow。
+
+4. 也可以用 `api` 參數臨時覆寫 Render API 網址：
+
+   `https://luboblu.github.io/taiwan-assistant-mcp/?api=https%3A%2F%2F你的服務.onrender.com`
+
+前端在沒有公開部署設定時仍使用同源 `/api/...`，所以本機開發方式不變。GitHub Pages 只負責前端；公開模式會明確停用 Google Calendar，因為目前的 OAuth 是本機流程。正式啟用公開 Calendar 前需要再改成 Web OAuth。
 
 ---
 
@@ -230,8 +266,11 @@ taiwan-assistant-mcp/
 ├── requirements.txt       # Python 套件清單
 ├── .env.example           # 環境變數範本
 ├── README.md              # 說明文件
+├── SPEC.md                # MCP / Web 基線規格與驗收條件
+├── UI_SPEC.md             # Web 工作台演進規格與驗收條件
 ├── tests/
-│   └── smoke_test.py      # 新增工具的煙霧測試
+│   ├── smoke_test.py      # 需要外部服務的煙霧測試
+│   └── test*.py           # 離線契約與安全測試
 ├── google_credentials.json  # Google OAuth2 憑證（你下載的，勿上傳到 Git）
 └── google_token.json        # Google 存取權杖快取（自動產生，勿上傳到 Git）
 ```
