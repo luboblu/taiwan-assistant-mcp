@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>台灣生活小助手</title>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" crossorigin="anonymous"></script>
+  <script>window.PAGES_API_BASE = '';</script>
   <style>
     /* ── Reset & Base ───────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -38,10 +39,30 @@
       align-items: center;
       gap: 16px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      position: sticky;
+      top: 0;
+      z-index: 20;
     }
     header .flag { font-size: 2.4rem; }
     header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: 0.5px; }
     header p  { font-size: 0.85rem; opacity: 0.8; margin-top: 2px; }
+    .header-spacer { flex: 1; }
+    .header-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.86);
+      white-space: nowrap;
+    }
+    .header-status::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #8ee6b4;
+      box-shadow: 0 0 0 4px rgba(142,230,180,0.14);
+    }
 
     /* ── Layout ─────────────────────────────────────── */
     .container {
@@ -104,6 +125,51 @@
       gap: 20px;
     }
     .panel.active { display: flex; }
+
+    /* ── Today Dashboard ────────────────────────────── */
+    .overview-hero {
+      background: linear-gradient(135deg, #0e4c7a 0%, #1d6fa4 62%, #159a9c 100%);
+      color: #fff;
+      border-radius: 18px;
+      padding: 28px;
+      box-shadow: 0 12px 30px rgba(14,76,122,0.22);
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: flex-end;
+    }
+    .overview-kicker { font-size: 0.78rem; letter-spacing: 1.2px; text-transform: uppercase; opacity: 0.78; }
+    .overview-hero h2 { color: #fff; font-size: clamp(1.55rem, 3vw, 2.25rem); margin: 7px 0; }
+    .overview-hero p { color: rgba(255,255,255,0.82); margin: 0; }
+    .overview-controls { display: flex; gap: 10px; min-width: min(100%, 300px); }
+    .overview-controls select { background: rgba(255,255,255,0.96); border: 0; }
+    .overview-controls .btn { background: #fff; color: var(--primary-dark); white-space: nowrap; }
+    .overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .overview-card { min-height: 176px; position: relative; overflow: hidden; }
+    .overview-card::after { content: ''; position: absolute; width: 100px; height: 100px; border-radius: 50%; right: -36px; bottom: -40px; background: var(--primary-light); opacity: 0.8; }
+    .overview-card h3 { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 0.96rem; margin-bottom: 12px; position: relative; z-index: 1; }
+    .overview-card .card-icon { font-size: 1.35rem; }
+    .overview-card .card-body { font-size: 0.88rem; line-height: 1.65; position: relative; z-index: 1; }
+    .overview-card .card-body h1, .overview-card .card-body h2, .overview-card .card-body h3 { font-size: 0.9rem; margin: 0 0 4px; color: var(--primary-dark); }
+    .overview-card .card-body p { margin: 3px 0; }
+    .overview-card.is-error { border: 1px solid #f6c8c5; background: #fffafa; }
+    .overview-card.is-error .card-body { color: var(--accent); }
+    .overview-card.is-loading .card-body { color: var(--muted); }
+    .overview-card.is-loading .card-body::before { content: ''; display: block; width: 70%; height: 10px; border-radius: 99px; background: #e8eef5; box-shadow: 0 22px 0 #eef3f7, 0 44px 0 #f3f6f9; animation: pulse 1.2s ease-in-out infinite alternate; }
+    @keyframes pulse { from { opacity: .45; } to { opacity: 1; } }
+    .dashboard-section { display: flex; flex-direction: column; gap: 14px; }
+    .dashboard-section-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .dashboard-section-header h2 { margin: 0; }
+    .quick-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .quick-action { display: flex; align-items: center; gap: 10px; text-align: left; padding: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; color: var(--text); cursor: pointer; transition: transform .15s, border-color .15s, box-shadow .15s; }
+    .quick-action:hover, .quick-action:focus-visible { transform: translateY(-2px); border-color: #9dc8e3; box-shadow: var(--shadow); outline: none; }
+    .quick-action strong { display: block; font-size: .88rem; }
+    .quick-action small { color: var(--muted); display: block; margin-top: 3px; }
+    .favorite-list { display: flex; flex-wrap: wrap; gap: 8px; min-height: 30px; }
+    .favorite-empty { color: var(--muted); font-size: .88rem; }
+    .favorite-chip { border: 1px solid #b7d8e9; background: #f2faff; color: var(--primary-dark); border-radius: 99px; padding: 8px 12px; cursor: pointer; }
+    .favorite-chip:hover, .favorite-chip:focus-visible { background: var(--primary-light); outline: none; }
+    .mobile-tool-select { display: none; }
 
     /* ── Card ────────────────────────────────────────── */
     .card {
@@ -244,18 +310,33 @@
     }
     .result-box hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
     .result-error { color: var(--accent); }
+    .muted { color: var(--muted); font-size: .82rem; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
     /* ── Responsive ──────────────────────────────────── */
     @media (max-width: 768px) {
-      .container { grid-template-columns: 1fr; }
-      nav { position: static; display: flex; overflow-x: auto; }
-      nav button { white-space: nowrap; border-left: none; border-bottom: 3px solid transparent; }
-      nav button.active { border-bottom-color: var(--primary); border-left: none; }
-      .nav-section { display: none; }
+      header { padding: 16px 18px; }
+      header .flag { font-size: 1.8rem; }
+      header h1 { font-size: 1.15rem; }
+      header p { font-size: .72rem; }
+      .header-status { display: none; }
+      .container { grid-template-columns: 1fr; padding: 16px 14px 36px; gap: 14px; }
+      nav { position: static; display: none; }
+      .mobile-tool-select { display: block; width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); font-size: .92rem; color: var(--text); }
+      .overview-hero { padding: 22px 18px; display: block; }
+      .overview-controls { margin-top: 18px; min-width: 0; }
+      .overview-controls .btn { padding-inline: 14px; }
+      .overview-grid { grid-template-columns: 1fr; }
+      .overview-card { min-height: 145px; }
+      .quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .quick-action { padding: 12px 10px; }
+      .card { padding: 18px; }
+      .form-grid { grid-template-columns: 1fr; }
     }
+    @media (min-width: 769px) { .mobile-tool-select { display: none; } }
   </style>
 </head>
-<body>
+<body data-api-base="">
 
 <header>
   <div class="flag">🇹🇼</div>
@@ -263,14 +344,41 @@
     <h1>台灣生活小助手</h1>
     <p>整合中央氣象局・交通部 TDX・Google 行事曆</p>
   </div>
+  <div class="header-spacer"></div>
+  <div class="header-status" id="connection-state">本機工作台已就緒</div>
 </header>
 
 <div class="container">
 
+  <select class="mobile-tool-select" id="mobile-tool" aria-label="選擇功能工作區" onchange="switchPanel(this.value, null)">
+    <option value="overview">🏠 今日總覽</option>
+    <option value="weather-forecast">🌤 縣市天氣預報</option>
+    <option value="weather-weekly">📅 一週天氣預報</option>
+    <option value="weather-obs">🌡 即時氣象觀測</option>
+    <option value="bus-routes">🚌 公車路線查詢</option>
+    <option value="bus-arrival">🚏 公車即時到站</option>
+    <option value="bus-stop">📍 查站牌公車</option>
+    <option value="train">🚂 台鐵時刻表</option>
+    <option value="thsr">🚄 高鐵時刻表</option>
+    <option value="holiday-check">📆 假日 / 補班查詢</option>
+    <option value="holiday-list">🗓 假日列表</option>
+    <option value="exchange">💱 台銀匯率</option>
+    <option value="cal-list">📋 列出行事曆</option>
+    <option value="cal-events">📅 行事曆事件</option>
+    <option value="cal-create">➕ 建立事件</option>
+    <option value="cal-update">✏️ 修改事件</option>
+    <option value="cal-delete">🗑 刪除事件</option>
+    <option value="cal-free">🕐 找空檔</option>
+  </select>
+
   <!-- ── 側邊導覽 ── -->
-  <nav>
+  <nav aria-label="功能導覽">
+    <div class="nav-section">工作台</div>
+    <button class="active" aria-current="page" onclick="switchPanel('overview', this)">
+      <span class="icon">🏠</span> 今日總覽
+    </button>
     <div class="nav-section">天氣</div>
-    <button class="active" onclick="switchPanel('weather-forecast', this)">
+    <button onclick="switchPanel('weather-forecast', this)">
       <span class="icon">🌤</span> 縣市天氣預報
     </button>
     <button onclick="switchPanel('weather-weekly', this)">
@@ -332,8 +440,64 @@
   <!-- ── 主內容 ── -->
   <main>
 
+    <!-- ── 今日總覽 ── -->
+    <div id="panel-overview" class="panel active">
+      <section class="overview-hero" aria-labelledby="overview-title">
+        <div>
+          <div class="overview-kicker" id="overview-date">今天</div>
+          <h2 id="overview-title">台北，今天過得如何？</h2>
+          <p>把天氣、生活資訊與常用查詢集中在一個工作台。</p>
+        </div>
+        <div class="overview-controls">
+          <label class="sr-only" for="overview-city">首頁城市</label>
+          <select id="overview-city" aria-label="首頁城市">
+            <option>台北市</option><option>新北市</option><option>基隆市</option>
+            <option>桃園市</option><option>新竹市</option><option>台中市</option>
+            <option>彰化縣</option><option>南投縣</option><option>雲林縣</option>
+            <option>嘉義市</option><option>台南市</option><option>高雄市</option>
+            <option>屏東縣</option><option>宜蘭縣</option><option>花蓮縣</option>
+            <option>台東縣</option><option>澎湖縣</option><option>金門縣</option>
+          </select>
+          <button class="btn" type="button" onclick="refreshOverview()" id="overview-refresh">↻ 更新</button>
+        </div>
+      </section>
+
+      <section class="overview-grid" id="overview-grid" aria-live="polite" aria-busy="true">
+        <article class="card overview-card is-loading" id="overview-card-weather">
+          <h3><span class="card-icon">🌤</span> 天氣</h3><div class="card-body" id="overview-weather">載入中…</div>
+        </article>
+        <article class="card overview-card is-loading" id="overview-card-holiday">
+          <h3><span class="card-icon">📆</span> 今日生活</h3><div class="card-body" id="overview-holiday">載入中…</div>
+        </article>
+        <article class="card overview-card is-loading" id="overview-card-exchange">
+          <h3><span class="card-icon">💱</span> 匯率快照</h3><div class="card-body" id="overview-exchange">載入中…</div>
+        </article>
+      </section>
+
+      <section class="card dashboard-section">
+        <div class="dashboard-section-header"><h2>⚡ 快速入口</h2><span class="muted">常用工具</span></div>
+        <div class="quick-grid">
+          <button class="quick-action" type="button" onclick="switchPanel('weather-forecast')"><span class="card-icon">🌤</span><span><strong>看 36 小時天氣</strong><small>掌握今天到明天</small></span></button>
+          <button class="quick-action" type="button" onclick="switchPanel('bus-stop')"><span class="card-icon">🚏</span><span><strong>查附近站牌</strong><small>搜尋即時到站</small></span></button>
+          <button class="quick-action" type="button" onclick="switchPanel('train')"><span class="card-icon">🚄</span><span><strong>規劃鐵路行程</strong><small>台鐵與高鐵時刻</small></span></button>
+          <button class="quick-action" type="button" onclick="switchPanel('cal-events')"><span class="card-icon">📅</span><span><strong>查看我的行程</strong><small>需要時才連接 Google</small></span></button>
+        </div>
+      </section>
+
+      <section class="card dashboard-section">
+        <div class="dashboard-section-header"><h2>📍 我的站牌</h2><button class="btn" type="button" onclick="switchPanel('bus-stop')">管理收藏</button></div>
+        <div id="favorite-stops" class="favorite-list" aria-live="polite"></div>
+      </section>
+
+      <section class="card dashboard-section">
+        <div class="dashboard-section-header"><h2>🕘 最近使用</h2><span class="muted">只保存在本機</span></div>
+        <div id="recent-queries" class="favorite-list" aria-live="polite"></div>
+      </section>
+
+    </div>
+
     <!-- 縣市天氣預報 -->
-    <div id="panel-weather-forecast" class="panel active">
+    <div id="panel-weather-forecast" class="panel">
       <div class="card">
         <h2>🌤 縣市天氣預報</h2>
         <div class="form-grid">
@@ -544,6 +708,7 @@
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
           <h2 style="margin:0;" id="bs-arrival-title">到站資訊</h2>
           <div style="display:flex;align-items:center;gap:12px;">
+            <button class="btn" type="button" id="favorite-stop-btn" style="background:#f2faff;color:var(--primary-dark);padding:7px 14px;font-size:0.85rem;" onclick="toggleFavoriteCurrent()">☆ 收藏站牌</button>
             <button class="btn" style="background:#f1f5f9;color:var(--text);padding:7px 14px;font-size:0.85rem;"
                     onclick="document.getElementById('bs-arrival-card').style.display='none';">
               ← 重新選站牌
@@ -1021,8 +1186,17 @@
   function switchPanel(id, btn) {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-    document.getElementById('panel-' + id).classList.add('active');
-    btn.classList.add('active');
+    const panel = document.getElementById('panel-' + id);
+    if (!panel) return;
+    panel.classList.add('active');
+    if (btn) {
+      btn.classList.add('active');
+      document.querySelectorAll('nav button').forEach(b => b.removeAttribute('aria-current'));
+      btn.setAttribute('aria-current', 'page');
+    }
+    const mobileSelect = document.getElementById('mobile-tool');
+    if (mobileSelect) mobileSelect.value = id;
+    if (id === 'overview' && !window._overviewLoaded) refreshOverview();
   }
 
   // ── 顯示 loading ─────────────────────────────────────────
@@ -1145,11 +1319,51 @@
   }
 
   // ── API 呼叫 ──────────────────────────────────────────────
+  // API base 可由 ?api=、window.TAIWAN_API_BASE 或 data-api-base 設定。
+  // 未設定時維持本機同源的 /api/... 行為；不接受非 HTTP(S) 或帶帳密的 URL。
+  function normalizeApiBase(value) {
+    const raw = String(value ?? '').trim();
+    if (!raw || raw.length > 2048 || !/^https?:\/\//i.test(raw)) return '';
+    try {
+      const url = new URL(raw);
+      if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return '';
+      url.search = '';
+      url.hash = '';
+      return url.href.replace(/\/+$/, '');
+    } catch {
+      return '';
+    }
+  }
+
+  function resolveApiBase() {
+    const params = new URLSearchParams(window.location.search);
+    const configured = params.has('api')
+      ? params.get('api')
+      : (window.TAIWAN_API_BASE || window.PAGES_API_BASE || document.body?.dataset.apiBase || document.documentElement.dataset.apiBase || '');
+    return normalizeApiBase(configured);
+  }
+
+  const API_BASE = resolveApiBase();
+  const PUBLIC_CALENDAR_MESSAGE = '公開部署目前未啟用 Google Calendar；請在本機模式使用 Calendar，或先完成 Web OAuth 整合。';
+
+  function apiUrl(endpoint) {
+    const path = String(endpoint ?? '');
+    if (!/^\/api(?:\/|$)/.test(path)) throw new Error('Invalid API endpoint');
+    return API_BASE ? `${API_BASE}${path}` : path;
+  }
+
+  async function apiFetch(endpoint, options) {
+    return fetch(apiUrl(endpoint), options);
+  }
+
+  // 方便部署環境檢查目前實際採用的 base；不包含任何金鑰或認證資料。
+  window.TAIWAN_API_BASE_RESOLVED = API_BASE;
+
   async function callApi(endpoint, body) {
     const opts = body
       ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
       : { method: 'GET' };
-    const res = await fetch(endpoint, opts);
+    const res = await apiFetch(endpoint, opts);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return data.result;
@@ -1197,9 +1411,11 @@
       return await callApi('/api/thsr/schedule', { origin, destination, date, limit });
     },
     'cal-list': async () => {
+      if (API_BASE) return PUBLIC_CALENDAR_MESSAGE;
       return await callApi('/api/calendar/list', null);
     },
     'cal-events': async () => {
+      if (API_BASE) return PUBLIC_CALENDAR_MESSAGE;
       const calendar_id = document.getElementById('ge-calid').value.trim() || 'primary';
       const query = document.getElementById('ge-query').value.trim() || null;
       const days_ahead = +document.getElementById('ge-ahead').value;
@@ -1228,6 +1444,7 @@
       return await callApi('/api/exchange', { currency });
     },
     'cal-create': async () => {
+      if (API_BASE) return PUBLIC_CALENDAR_MESSAGE;
       const summary = document.getElementById('cc-summary').value.trim();
       let start = document.getElementById('cc-start').value.trim();
       let end = document.getElementById('cc-end').value.trim();
@@ -1247,6 +1464,7 @@
       });
     },
     'cal-update': async () => {
+      if (API_BASE) return PUBLIC_CALENDAR_MESSAGE;
       const event_id = document.getElementById('cu-id').value.trim();
       if (!event_id) return '請輸入要修改的 event_id。';
       const remind = document.getElementById('cu-remind').value;
@@ -1263,6 +1481,7 @@
       });
     },
     'cal-delete': async () => {
+      if (API_BASE) return PUBLIC_CALENDAR_MESSAGE;
       const event_id = document.getElementById('cd-id').value.trim();
       if (!event_id) return '請輸入要刪除的 event_id。';
       if (!confirm('確定要刪除這個事件嗎？此動作無法復原。')) return '已取消刪除。';
@@ -1272,6 +1491,7 @@
       });
     },
     'cal-free': async () => {
+      if (API_BASE) return PUBLIC_CALENDAR_MESSAGE;
       const time_min = document.getElementById('cf-min').value.trim();
       const time_max = document.getElementById('cf-max').value.trim();
       if (!time_min || !time_max) return '請輸入搜尋範圍的開始與結束時間。';
@@ -1296,7 +1516,7 @@
     const townSel = document.getElementById('wk-town');
     townSel.innerHTML = '<option value="">載入中…</option>';
     try {
-      const res = await fetch('/api/weather/towns?county=' + encodeURIComponent(county));
+      const res = await apiFetch('/api/weather/towns?county=' + encodeURIComponent(county));
       const data = await res.json();
       const towns = data.towns || [];
       let html = '<option value="">（代表行政區）</option>';
@@ -1313,12 +1533,212 @@
   loadTowns();
 
   async function query(id) {
+    recordRecentQuery(id);
     setLoading(id);
     try {
       const result = await handlers[id]();
       setResult(id, result);
     } catch (e) {
       setResult(id, 'Error: 無法連接後端伺服器，請確認 web_app.py 正在執行中。');
+    }
+  }
+
+  // ── 首頁工作台 ────────────────────────────────────────────
+  const PREFS_KEY = 'taiwan-assistant.preferences.v1';
+  const FAVORITES_KEY = 'taiwan-assistant.favorite-stops.v1';
+  const RECENTS_KEY = 'taiwan-assistant.recent-queries.v1';
+  let _overviewController = null;
+
+  function readLocalJson(key, fallback) {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(key) || 'null');
+      return parsed === null ? fallback : parsed;
+    } catch { return fallback; }
+  }
+
+  function writeLocalJson(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* private mode / quota */ }
+  }
+
+  function getSavedCity() {
+    const prefs = readLocalJson(PREFS_KEY, {});
+    return typeof prefs.city === 'string' && prefs.city.trim() ? prefs.city.trim() : '台北市';
+  }
+
+  function setSavedCity(city) {
+    const cleanCity = String(city || '').trim() || '台北市';
+    const prefs = readLocalJson(PREFS_KEY, {});
+    writeLocalJson(PREFS_KEY, { city: cleanCity, updatedAt: Date.now() });
+    ['overview-city', 'wf-city', 'wk-county'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && [...el.options].some(option => option.value === cleanCity)) el.value = cleanCity;
+    });
+    return cleanCity;
+  }
+
+  function validFavorite(value) {
+    if (!value || typeof value !== 'object') return null;
+    const name = typeof value.name === 'string' ? value.name.trim().slice(0, 80) : '';
+    const city = typeof value.city === 'string' ? value.city.trim().slice(0, 30) : '';
+    const uids = Array.isArray(value.uids)
+      ? value.uids.filter(uid => typeof uid === 'string' && uid.trim()).slice(0, 20).map(uid => uid.trim())
+      : [];
+    return name && city && uids.length ? { name, city, uids } : null;
+  }
+
+  function getFavorites() {
+    const raw = readLocalJson(FAVORITES_KEY, []);
+    if (!Array.isArray(raw)) return [];
+    return raw.map(validFavorite).filter(Boolean).slice(0, 8);
+  }
+
+  function renderFavorites() {
+    const list = document.getElementById('favorite-stops');
+    if (!list) return;
+    list.replaceChildren();
+    const favorites = getFavorites();
+    if (!favorites.length) {
+      const empty = document.createElement('span');
+      empty.className = 'favorite-empty';
+      empty.textContent = '還沒有收藏站牌；在查詢站牌後按「收藏站牌」即可快速回來。';
+      list.appendChild(empty);
+      return;
+    }
+    favorites.forEach(stop => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'favorite-chip';
+      button.textContent = `📍 ${stop.name} · ${stop.city}`;
+      button.addEventListener('click', () => {
+        switchPanel('bus-stop');
+        selectStop(stop.uids, stop.name, stop.city);
+      });
+      list.appendChild(button);
+    });
+  }
+
+  function toggleFavoriteCurrent() {
+    const current = validFavorite(_currentStop);
+    if (!current) return;
+    const favorites = getFavorites();
+    const existing = favorites.findIndex(stop => stop.name === current.name && stop.city === current.city);
+    if (existing >= 0) {
+      favorites.splice(existing, 1);
+    } else {
+      favorites.unshift(current);
+    }
+    writeLocalJson(FAVORITES_KEY, favorites.slice(0, 8));
+    updateFavoriteButton();
+    renderFavorites();
+  }
+
+  function updateFavoriteButton() {
+    const button = document.getElementById('favorite-stop-btn');
+    if (!button || !_currentStop) return;
+    const isFavorite = getFavorites().some(stop => stop.name === _currentStop.name && stop.city === _currentStop.city);
+    button.textContent = isFavorite ? '★ 已收藏' : '☆ 收藏站牌';
+    button.setAttribute('aria-pressed', String(isFavorite));
+  }
+
+  const recentLabels = {
+    'weather-forecast': '縣市天氣預報', 'weather-weekly': '一週天氣預報', 'weather-obs': '即時氣象觀測',
+    'bus-routes': '公車路線查詢', 'bus-arrival': '公車即時到站', 'bus-stop': '查站牌公車',
+    train: '台鐵時刻表', thsr: '高鐵時刻表', 'holiday-check': '假日 / 補班查詢',
+    'holiday-list': '假日列表', exchange: '台銀匯率', 'cal-list': '列出行事曆',
+    'cal-events': '行事曆事件', 'cal-create': '建立事件', 'cal-update': '修改事件',
+    'cal-delete': '刪除事件', 'cal-free': '找空檔',
+  };
+
+  function renderRecentQueries() {
+    const list = document.getElementById('recent-queries');
+    if (!list) return;
+    list.replaceChildren();
+    const recent = readLocalJson(RECENTS_KEY, []);
+    const items = Array.isArray(recent) ? recent.filter(item => item && recentLabels[item.id]).slice(0, 5) : [];
+    if (!items.length) {
+      const empty = document.createElement('span');
+      empty.className = 'favorite-empty';
+      empty.textContent = '完成一次查詢後，這裡會顯示你的最近工具。';
+      list.appendChild(empty);
+      return;
+    }
+    items.forEach(item => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'favorite-chip';
+      button.textContent = `↗ ${recentLabels[item.id]}`;
+      button.addEventListener('click', () => switchPanel(item.id));
+      list.appendChild(button);
+    });
+  }
+
+  function recordRecentQuery(id) {
+    if (!recentLabels[id]) return;
+    const recent = readLocalJson(RECENTS_KEY, []);
+    const items = Array.isArray(recent) ? recent.filter(item => item && recentLabels[item.id]) : [];
+    writeLocalJson(RECENTS_KEY, [{ id, at: Date.now() }, ...items.filter(item => item.id !== id)].slice(0, 5));
+    renderRecentQueries();
+  }
+
+  function renderOverviewCard(name, card) {
+    const cardEl = document.getElementById(`overview-card-${name}`);
+    const bodyEl = document.getElementById(`overview-${name}`);
+    if (!cardEl || !bodyEl) return;
+    cardEl.classList.remove('is-loading', 'is-error');
+    bodyEl.replaceChildren();
+    if (!card || card.status === 'error') {
+      cardEl.classList.add('is-error');
+      bodyEl.textContent = card?.result || '暫時無法取得資料，請稍後重試。';
+      return;
+    }
+    const result = card.result;
+    if (result === null || result === undefined || result === '') {
+      bodyEl.textContent = card.status === 'skipped' ? '尚未連接行事曆。' : '目前沒有資料。';
+      return;
+    }
+    const source = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+    if (window.marked && typeof window.marked.parse === 'function' && typeof result === 'string') {
+      try { bodyEl.appendChild(sanitizeMarkdown(window.marked.parse(source))); return; } catch { /* text fallback */ }
+    }
+    bodyEl.textContent = source;
+  }
+
+  async function refreshOverview() {
+    const city = setSavedCity(document.getElementById('overview-city')?.value || getSavedCity());
+    const grid = document.getElementById('overview-grid');
+    const refreshButton = document.getElementById('overview-refresh');
+    const status = document.getElementById('connection-state');
+    if (!grid) return;
+    if (_overviewController) _overviewController.abort();
+    _overviewController = new AbortController();
+    const timeout = setTimeout(() => _overviewController.abort(), 15000);
+    grid.setAttribute('aria-busy', 'true');
+    refreshButton?.setAttribute('disabled', 'disabled');
+    ['weather', 'holiday', 'exchange'].forEach(name => {
+      const card = document.getElementById(`overview-card-${name}`);
+      if (card) { card.classList.remove('is-error'); card.classList.add('is-loading'); }
+    });
+    status && (status.textContent = '正在更新首頁資料…');
+    const date = new Intl.DateTimeFormat('zh-TW', { dateStyle: 'full' }).format(new Date());
+    const dateEl = document.getElementById('overview-date');
+    const titleEl = document.getElementById('overview-title');
+    if (dateEl) dateEl.textContent = date;
+    if (titleEl) titleEl.textContent = `${city}，今天過得如何？`;
+    try {
+      const response = await apiFetch(`/api/overview?city=${encodeURIComponent(city)}&include_calendar=false`, { signal: _overviewController.signal });
+      const body = await response.json();
+      if (!response.ok) throw new Error('overview request failed');
+      ['weather', 'holiday', 'exchange'].forEach(name => renderOverviewCard(name, body.cards?.[name]));
+      window._overviewLoaded = true;
+      status && (status.textContent = `已更新・${new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}`);
+    } catch (error) {
+      const message = error?.name === 'AbortError' ? '更新逾時，請重試。' : '暫時無法連接後端，請確認服務已啟動。';
+      ['weather', 'holiday', 'exchange'].forEach(name => renderOverviewCard(name, { status: 'error', result: message }));
+      status && (status.textContent = '目前離線・可重試');
+    } finally {
+      clearTimeout(timeout);
+      grid.setAttribute('aria-busy', 'false');
+      refreshButton?.removeAttribute('disabled');
     }
   }
 
@@ -1351,7 +1771,7 @@
     listEl.innerHTML = '<div style="display:flex;gap:8px;align-items:center;color:var(--muted)"><div class="spinner"></div>搜尋中…</div>';
 
     try {
-      const res  = await fetch('/api/bus/stop-search', {
+      const res  = await apiFetch('/api/bus/stop-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ city, keyword: kw, district }),
@@ -1409,6 +1829,7 @@
   function selectStop(uids, name, city) {
     _currentStop = { uids, name, city };
     document.getElementById('bs-arrival-title').textContent = `📍 ${name} 到站資訊`;
+    updateFavoriteButton();
     document.getElementById('bs-arrival-card').style.display = 'block';
     document.getElementById('bs-arrival-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     queryStop();
@@ -1421,7 +1842,7 @@
     el.innerHTML = '<div class="spinner"></div><span>查詢中…</span>';
 
     try {
-      const res = await fetch('/api/bus/stop-arrival', {
+      const res = await apiFetch('/api/bus/stop-arrival', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1493,6 +1914,17 @@
   ['tr-date', 'th-date'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.min = todayStr;
+  });
+
+  // 啟動首頁工作台：偏好與收藏只留在本機瀏覽器，不包含任何金鑰。
+  const initialCity = getSavedCity();
+  setSavedCity(initialCity);
+  renderFavorites();
+  renderRecentQueries();
+  refreshOverview();
+  document.getElementById('overview-city')?.addEventListener('change', event => {
+    setSavedCity(event.target.value);
+    refreshOverview();
   });
 
   // Enter 鍵觸發查詢
