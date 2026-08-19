@@ -11,10 +11,12 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import List, Optional
+from zoneinfo import ZoneInfo
 
 try:
     from dotenv import load_dotenv
@@ -22,7 +24,7 @@ try:
 except ImportError:
     pass
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -102,6 +104,68 @@ async def health():
         "service": "taiwan-assistant-web",
         "version": app.version,
         "configuration": configured,
+    }
+
+
+_TAIPEI_TZ = ZoneInfo("Asia/Taipei")
+_OVERVIEW_ERROR_MESSAGES = {
+    "weather": "天氣服務暫時無法取得資料，請稍後重試。",
+    "holiday": "假日服務暫時無法取得資料，請稍後重試。",
+    "exchange": "匯率服務暫時無法取得資料，請稍後重試。",
+    "calendar": "Google Calendar 暫時無法取得資料，請稍後重試。",
+}
+
+
+def _overview_card(card_name: str, result: object) -> dict:
+    """將服務結果包裝成安全的首頁卡片，不暴露原始例外內容。"""
+    if isinstance(result, BaseException):
+        return {"status": "error", "result": _OVERVIEW_ERROR_MESSAGES[card_name]}
+
+    if isinstance(result, str) and result.lstrip().lower().startswith("error:"):
+        return {"status": "error", "result": _OVERVIEW_ERROR_MESSAGES[card_name]}
+
+    return {"status": "ok", "result": result}
+
+
+@app.get("/api/overview")
+async def api_overview(
+    city: str = Query(..., min_length=1),
+    currency: str = "USD",
+    include_calendar: bool = False,
+):
+    """並行載入首頁摘要；單一服務失敗只影響自己的卡片。"""
+    city = city.strip()
+    currency = currency.strip().upper()
+    if not city:
+        raise HTTPException(status_code=422, detail="city 不可為空白。")
+    if not currency:
+        raise HTTPException(status_code=422, detail="currency 不可為空白。")
+
+    tasks = [
+        weather_get_forecast(WeatherForecastInput(city=city)),
+        holiday_check(HolidayCheckInput()),
+        get_exchange_rate(ExchangeRateInput(currency=currency)),
+    ]
+    if include_calendar:
+        tasks.append(gcal_list_events(CalendarEventsInput()))
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    weather_result, holiday_result, exchange_result = results[:3]
+    calendar_result = results[3] if include_calendar else None
+
+    return {
+        "city": city,
+        "generated_at": datetime.now(_TAIPEI_TZ).isoformat(),
+        "cards": {
+            "weather": _overview_card("weather", weather_result),
+            "holiday": _overview_card("holiday", holiday_result),
+            "exchange": _overview_card("exchange", exchange_result),
+            "calendar": (
+                _overview_card("calendar", calendar_result)
+                if include_calendar
+                else {"status": "skipped", "result": None}
+            ),
+        },
     }
 
 

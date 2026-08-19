@@ -101,6 +101,11 @@ def _truncate(text: str) -> str:
     return text
 
 
+def _escape_odata_string(value: str) -> str:
+    """Escape a value embedded in an OData string literal."""
+    return str(value).replace("'", "''")
+
+
 # ============================================================
 # ① 中央氣象局（CWA）工具
 # ============================================================
@@ -501,7 +506,8 @@ async def tdx_get_bus_routes(params: BusRouteInput) -> str:
     try:
         query: Dict[str, Any] = {"$top": params.limit, "$format": "JSON"}
         if params.route_name:
-            query["$filter"] = f"contains(RouteName/Zh_tw,'{params.route_name}')"
+            route_name = _escape_odata_string(params.route_name)
+            query["$filter"] = f"contains(RouteName/Zh_tw,'{route_name}')"
 
         data = await _tdx_get(f"/v2/Bus/Route/City/{city_en}", query)
 

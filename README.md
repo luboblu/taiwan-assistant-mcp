@@ -109,7 +109,7 @@ cp .env.example .env
 
 ## 🌐 啟動本機 Web 介面
 
-FastAPI 介面是推薦的瀏覽器入口：
+FastAPI 介面是推薦的瀏覽器入口，提供自訂的響應式工作台（首頁摘要、天氣、交通、行事曆與生活資訊），不依賴 Gradio 作為主要 UI：
 
 ```bash
 python -m uvicorn web_app:app --host 127.0.0.1 --port 8000
@@ -117,7 +117,9 @@ python -m uvicorn web_app:app --host 127.0.0.1 --port 8000
 
 開啟 <http://127.0.0.1:8000>；服務健康狀態可用 <http://127.0.0.1:8000/health> 查看。健康檢查不會呼叫外部 API，也不會顯示任何金鑰內容。
 
-另有 Gradio 替代入口：
+首頁會並行載入天氣、假日與匯率摘要；單一資料來源暫時失敗時，其他卡片仍會顯示。偏好城市、公車站收藏與最近查詢只保存於瀏覽器的 `localStorage`，不會把金鑰或 OAuth 權杖送到前端。首頁聚合資料也可由 `GET /api/overview?city=台北市` 取得；Calendar 摘要必須明確帶上 `include_calendar=true` 才會觸發 OAuth。
+
+Gradio 仍保留作為相容性 / 備援入口（既有 `app.py` 工作流不受影響）：
 
 ```bash
 python app.py
@@ -230,8 +232,11 @@ taiwan-assistant-mcp/
 ├── requirements.txt       # Python 套件清單
 ├── .env.example           # 環境變數範本
 ├── README.md              # 說明文件
+├── SPEC.md                # MCP / Web 基線規格與驗收條件
+├── UI_SPEC.md             # Web 工作台演進規格與驗收條件
 ├── tests/
-│   └── smoke_test.py      # 新增工具的煙霧測試
+│   ├── smoke_test.py      # 需要外部服務的煙霧測試
+│   └── test*.py           # 離線契約與安全測試
 ├── google_credentials.json  # Google OAuth2 憑證（你下載的，勿上傳到 Git）
 └── google_token.json        # Google 存取權杖快取（自動產生，勿上傳到 Git）
 ```
