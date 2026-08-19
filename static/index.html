@@ -273,6 +273,9 @@
     <button class="active" onclick="switchPanel('weather-forecast', this)">
       <span class="icon">🌤</span> 縣市天氣預報
     </button>
+    <button onclick="switchPanel('weather-weekly', this)">
+      <span class="icon">📅</span> 一週天氣預報
+    </button>
     <button onclick="switchPanel('weather-obs', this)">
       <span class="icon">🌡</span> 即時氣象觀測
     </button>
@@ -294,12 +297,35 @@
       <span class="icon">🚄</span> 高鐵時刻表
     </button>
 
+    <div class="nav-section">生活</div>
+    <button onclick="switchPanel('holiday-check', this)">
+      <span class="icon">📆</span> 假日 / 補班查詢
+    </button>
+    <button onclick="switchPanel('holiday-list', this)">
+      <span class="icon">🗓</span> 假日列表
+    </button>
+    <button onclick="switchPanel('exchange', this)">
+      <span class="icon">💱</span> 台銀匯率
+    </button>
+
     <div class="nav-section">行事曆</div>
     <button onclick="switchPanel('cal-list', this)">
       <span class="icon">📋</span> 列出行事曆
     </button>
     <button onclick="switchPanel('cal-events', this)">
       <span class="icon">📅</span> 行事曆事件
+    </button>
+    <button onclick="switchPanel('cal-create', this)">
+      <span class="icon">➕</span> 建立事件
+    </button>
+    <button onclick="switchPanel('cal-update', this)">
+      <span class="icon">✏️</span> 修改事件
+    </button>
+    <button onclick="switchPanel('cal-delete', this)">
+      <span class="icon">🗑</span> 刪除事件
+    </button>
+    <button onclick="switchPanel('cal-free', this)">
+      <span class="icon">🕐</span> 找空檔
     </button>
   </nav>
 
@@ -313,7 +339,16 @@
         <div class="form-grid">
           <div class="form-group">
             <label>縣市名稱</label>
-            <input type="text" id="wf-city" value="台北" placeholder="例如：台北、高雄、花蓮" />
+            <select id="wf-city">
+              <option>台北市</option><option>新北市</option><option>基隆市</option>
+              <option>桃園市</option><option>新竹市</option><option>新竹縣</option>
+              <option>苗栗縣</option><option>台中市</option><option>彰化縣</option>
+              <option>南投縣</option><option>雲林縣</option><option>嘉義市</option>
+              <option>嘉義縣</option><option>台南市</option><option>高雄市</option>
+              <option>屏東縣</option><option>宜蘭縣</option><option>花蓮縣</option>
+              <option>台東縣</option><option>澎湖縣</option><option>金門縣</option>
+              <option>連江縣</option>
+            </select>
           </div>
         </div>
         <button class="btn btn-primary" onclick="query('weather-forecast')">
@@ -324,6 +359,43 @@
         <h2>查詢結果</h2>
         <div id="result-weather-forecast" class="result-box">
           <div class="result-placeholder">輸入縣市名稱後點擊查詢</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 一週天氣預報 -->
+    <div id="panel-weather-weekly" class="panel">
+      <div class="card">
+        <h2>📅 一週天氣預報</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>縣市名稱</label>
+            <select id="wk-county" onchange="loadTowns()">
+              <option>台北市</option><option>新北市</option><option>基隆市</option>
+              <option>桃園市</option><option>新竹市</option><option>新竹縣</option>
+              <option>苗栗縣</option><option>台中市</option><option>彰化縣</option>
+              <option>南投縣</option><option>雲林縣</option><option>嘉義市</option>
+              <option>嘉義縣</option><option>台南市</option><option>高雄市</option>
+              <option>屏東縣</option><option>宜蘭縣</option><option>花蓮縣</option>
+              <option>台東縣</option><option>澎湖縣</option><option>金門縣</option>
+              <option>連江縣</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>鄉鎮 / 行政區</label>
+            <select id="wk-town">
+              <option value="">（代表行政區）</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="query('weather-weekly')">
+          &#x1F50D; 查詢一週天氣
+        </button>
+      </div>
+      <div class="card">
+        <h2>查詢結果</h2>
+        <div id="result-weather-weekly" class="result-box">
+          <div class="result-placeholder">輸入縣市（與鄉鎮）後點擊查詢</div>
         </div>
       </div>
     </div>
@@ -365,7 +437,12 @@
         <div class="form-grid">
           <div class="form-group">
             <label>城市名稱</label>
-            <input type="text" id="br-city" value="台北" placeholder="例如：台北、高雄" />
+            <select id="br-city">
+              <option>台北</option><option>新北</option><option>桃園</option>
+              <option>台中</option><option>台南</option><option>高雄</option>
+              <option>基隆</option><option>新竹市</option><option>嘉義市</option>
+              <option>宜蘭</option><option>屏東</option><option>花蓮</option><option>台東</option>
+            </select>
           </div>
           <div class="form-group">
             <label>路線關鍵字（可留空）</label>
@@ -399,7 +476,12 @@
         <div class="form-grid">
           <div class="form-group">
             <label>城市名稱</label>
-            <input type="text" id="ba-city" value="台北" placeholder="例如：台北、高雄" />
+            <select id="ba-city">
+              <option>台北</option><option>新北</option><option>桃園</option>
+              <option>台中</option><option>台南</option><option>高雄</option>
+              <option>基隆</option><option>新竹市</option><option>嘉義市</option>
+              <option>宜蘭</option><option>屏東</option><option>花蓮</option><option>台東</option>
+            </select>
           </div>
           <div class="form-group">
             <label>路線名稱</label>
@@ -655,6 +737,282 @@
       </div>
     </div>
 
+    <!-- 假日 / 補班查詢 -->
+    <div id="panel-holiday-check" class="panel">
+      <div class="card">
+        <h2>📆 假日 / 補班查詢</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>日期（留空為今天）</label>
+            <input type="date" id="hc-date" />
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="query('holiday-check')">
+          &#x1F50D; 查詢
+        </button>
+      </div>
+      <div class="card">
+        <h2>查詢結果</h2>
+        <div id="result-holiday-check" class="result-box">
+          <div class="result-placeholder">選擇日期後點擊查詢（免金鑰）</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 假日列表 -->
+    <div id="panel-holiday-list" class="panel">
+      <div class="card">
+        <h2>🗓 假日 / 補班列表</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>年份</label>
+            <input type="number" id="hl-year" value="2026" min="2000" max="2100" />
+          </div>
+          <div class="form-group">
+            <label>月份（0 = 整年）</label>
+            <div class="range-row">
+              <input type="range" id="hl-month" min="0" max="12" value="0"
+                     oninput="document.getElementById('hl-month-val').textContent=this.value" />
+              <span class="range-val" id="hl-month-val">0</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="query('holiday-list')">
+          &#x1F50D; 列出
+        </button>
+      </div>
+      <div class="card">
+        <h2>查詢結果</h2>
+        <div id="result-holiday-list" class="result-box">
+          <div class="result-placeholder">設定年份 / 月份後點擊列出</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 台銀匯率 -->
+    <div id="panel-exchange" class="panel">
+      <div class="card">
+        <h2>💱 台灣銀行牌告匯率</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>幣別</label>
+            <select id="ex-currency">
+              <option value="">常用幣別（USD/JPY/EUR/CNY/HKD）</option>
+              <option value="USD">USD 美元</option><option value="JPY">JPY 日圓</option>
+              <option value="EUR">EUR 歐元</option><option value="CNY">CNY 人民幣</option>
+              <option value="HKD">HKD 港幣</option><option value="GBP">GBP 英鎊</option>
+              <option value="AUD">AUD 澳幣</option><option value="CAD">CAD 加拿大幣</option>
+              <option value="SGD">SGD 新加坡幣</option><option value="CHF">CHF 瑞士法郎</option>
+              <option value="ZAR">ZAR 南非幣</option><option value="SEK">SEK 瑞典幣</option>
+              <option value="NZD">NZD 紐西蘭幣</option><option value="THB">THB 泰銖</option>
+              <option value="KRW">KRW 韓元</option><option value="VND">VND 越南盾</option>
+              <option value="MYR">MYR 馬來西亞幣</option><option value="PHP">PHP 菲律賓披索</option>
+              <option value="IDR">IDR 印尼盾</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="query('exchange')">
+          &#x1F50D; 查詢匯率
+        </button>
+      </div>
+      <div class="card">
+        <h2>查詢結果</h2>
+        <div id="result-exchange" class="result-box">
+          <div class="result-placeholder">留空查常用幣別，或輸入幣別代碼（免金鑰）</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 建立事件 -->
+    <div id="panel-cal-create" class="panel">
+      <div class="card">
+        <h2>➕ 建立行事曆事件</h2>
+        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:14px;">
+          時區預設 Asia/Taipei；開始 / 結束若只填日期（YYYY-MM-DD）會建立為全天事件。
+        </p>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>標題</label>
+            <input type="text" id="cc-summary" placeholder="例如：專案會議" />
+          </div>
+          <div class="form-group">
+            <label>開始時間</label>
+            <input type="datetime-local" id="cc-start" />
+          </div>
+          <div class="form-group">
+            <label>結束時間</label>
+            <input type="datetime-local" id="cc-end" />
+          </div>
+          <div class="form-group">
+            <label>全天事件</label>
+            <div class="range-row">
+              <input type="checkbox" id="cc-allday" style="width:auto;transform:scale(1.3);" />
+              <span style="font-size:0.82rem;color:var(--muted);">勾選則忽略時間，只用日期</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>行事曆 ID</label>
+            <input type="text" id="cc-calid" value="primary" />
+          </div>
+          <div class="form-group">
+            <label>地點（可留空）</label>
+            <input type="text" id="cc-loc" placeholder="例如：台北 101" />
+          </div>
+          <div class="form-group">
+            <label>說明（可留空）</label>
+            <input type="text" id="cc-desc" placeholder="事件備註" />
+          </div>
+          <div class="form-group">
+            <label>參與者 email（逗號分隔）</label>
+            <input type="text" id="cc-att" placeholder="a@x.com, b@y.com" />
+          </div>
+          <div class="form-group">
+            <label>提前提醒（分鐘，可留空）</label>
+            <input type="number" id="cc-remind" placeholder="例如：30" min="0" />
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="query('cal-create')">
+          &#x2795; 建立事件
+        </button>
+      </div>
+      <div class="card">
+        <h2>結果</h2>
+        <div id="result-cal-create" class="result-box">
+          <div class="result-placeholder">填寫標題與起訖時間後建立</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 修改事件 -->
+    <div id="panel-cal-update" class="panel">
+      <div class="card">
+        <h2>✏️ 修改行事曆事件</h2>
+        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:14px;">
+          只更新有填的欄位。event_id 可從「行事曆事件」查詢結果取得。
+        </p>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>event_id（必填）</label>
+            <input type="text" id="cu-id" placeholder="事件 ID" />
+          </div>
+          <div class="form-group">
+            <label>行事曆 ID</label>
+            <input type="text" id="cu-calid" value="primary" />
+          </div>
+          <div class="form-group">
+            <label>標題（可留空）</label>
+            <input type="text" id="cu-summary" />
+          </div>
+          <div class="form-group">
+            <label>開始時間（可留空）</label>
+            <input type="datetime-local" id="cu-start" />
+          </div>
+          <div class="form-group">
+            <label>結束時間（可留空）</label>
+            <input type="datetime-local" id="cu-end" />
+          </div>
+          <div class="form-group">
+            <label>地點（可留空）</label>
+            <input type="text" id="cu-loc" />
+          </div>
+          <div class="form-group">
+            <label>說明（可留空）</label>
+            <input type="text" id="cu-desc" />
+          </div>
+          <div class="form-group">
+            <label>參與者 email（逗號分隔）</label>
+            <input type="text" id="cu-att" placeholder="會覆蓋原有清單" />
+          </div>
+          <div class="form-group">
+            <label>提前提醒（分鐘，可留空）</label>
+            <input type="number" id="cu-remind" min="0" />
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="query('cal-update')">
+          &#x270F; 修改事件
+        </button>
+      </div>
+      <div class="card">
+        <h2>結果</h2>
+        <div id="result-cal-update" class="result-box">
+          <div class="result-placeholder">輸入 event_id 與要修改的欄位</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 刪除事件 -->
+    <div id="panel-cal-delete" class="panel">
+      <div class="card">
+        <h2>🗑 刪除行事曆事件</h2>
+        <p style="color:var(--accent);font-size:0.85rem;margin-bottom:14px;">
+          ⚠️ 刪除無法復原。建議先用「行事曆事件」確認內容與 event_id 再刪除。
+        </p>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>event_id（必填）</label>
+            <input type="text" id="cd-id" placeholder="事件 ID" />
+          </div>
+          <div class="form-group">
+            <label>行事曆 ID</label>
+            <input type="text" id="cd-calid" value="primary" />
+          </div>
+        </div>
+        <button class="btn btn-primary" style="background:var(--accent);" onclick="query('cal-delete')">
+          &#x1F5D1; 刪除事件
+        </button>
+      </div>
+      <div class="card">
+        <h2>結果</h2>
+        <div id="result-cal-delete" class="result-box">
+          <div class="result-placeholder">輸入 event_id 後刪除</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 找空檔 -->
+    <div id="panel-cal-free" class="panel">
+      <div class="card">
+        <h2>🕐 找可用空檔</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>開始時間</label>
+            <input type="datetime-local" id="cf-min" />
+          </div>
+          <div class="form-group">
+            <label>結束時間</label>
+            <input type="datetime-local" id="cf-max" />
+          </div>
+          <div class="form-group">
+            <label>需要的空檔（分鐘）</label>
+            <div class="range-row">
+              <input type="range" id="cf-dur" min="15" max="480" value="60" step="15"
+                     oninput="document.getElementById('cf-dur-val').textContent=this.value" />
+              <span class="range-val" id="cf-dur-val">60</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>行事曆 ID（逗號分隔）</label>
+            <input type="text" id="cf-cals" value="primary" />
+          </div>
+          <div class="form-group">
+            <label>只找上班時間 09:00–18:00</label>
+            <div class="range-row">
+              <input type="checkbox" id="cf-work" checked style="width:auto;transform:scale(1.3);" />
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="query('cal-free')">
+          &#x1F50D; 找空檔
+        </button>
+      </div>
+      <div class="card">
+        <h2>結果</h2>
+        <div id="result-cal-free" class="result-box">
+          <div class="result-placeholder">輸入時間範圍與需要的長度</div>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -674,15 +1032,116 @@
     el.innerHTML = '<div class="spinner"></div><span>查詢中…</span>';
   }
 
+  // ── 輸出安全處理 ─────────────────────────────────────────
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }[ch]));
+  }
+
+  // Markdown 由 API 回傳，先以 DOMParser 建立暫存 DOM，再移除危險節點、屬性與 URL。
+  function sanitizeMarkdown(html) {
+    const template = document.createElement('template');
+    template.innerHTML = String(html ?? '');
+
+    const forbiddenTags = new Set(['SCRIPT', 'IFRAME', 'OBJECT', 'EMBED', 'APPLET', 'BASE', 'FORM', 'META', 'LINK', 'STYLE']);
+    const allowedTags = new Set([
+      'A', 'ABBR', 'B', 'BLOCKQUOTE', 'BR', 'CODE', 'DEL', 'EM', 'H1', 'H2', 'H3',
+      'H4', 'H5', 'H6', 'HR', 'I', 'IMG', 'LI', 'OL', 'P', 'PRE', 'S', 'SPAN',
+      'STRONG', 'TABLE', 'TBODY', 'TD', 'TFOOT', 'TH', 'THEAD', 'TR', 'UL',
+    ]);
+    const allowedAttributes = new Set([
+      'alt', 'align', 'class', 'colspan', 'height', 'href', 'rel', 'rowspan',
+      'scope', 'src', 'target', 'title', 'width',
+    ]);
+    const urlAttributes = new Set(['href', 'src']);
+
+    function isSafeUrl(value, attribute) {
+      const normalized = String(value ?? '')
+        .trim()
+        .replace(/[\u0000-\u0020]/g, '')
+        .toLowerCase();
+      if (!normalized || normalized.startsWith('javascript:')) return false;
+      if (normalized.startsWith('//')) return false;
+      if (attribute === 'src') {
+        return /^(?:https?:|\/|\.\.?\/)/.test(normalized);
+      }
+      return /^(?:https?:|mailto:|tel:|#|\/|\.\.?\/)/.test(normalized)
+        || !/^[a-z][a-z0-9+.-]*:/.test(normalized);
+    }
+
+    function clean(node) {
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+      const tag = node.tagName.toUpperCase();
+      if (forbiddenTags.has(tag)) {
+        node.remove();
+        return;
+      }
+
+      [...node.attributes].forEach(attribute => {
+        const name = attribute.name.toLowerCase();
+        const value = attribute.value;
+        if (name.startsWith('on') || name === 'style' || name === 'srcdoc'
+            || !allowedAttributes.has(name)
+            || (urlAttributes.has(name) && !isSafeUrl(value, name))) {
+          node.removeAttribute(attribute.name);
+          return;
+        }
+        if (/[\u0000-\u001f\u007f]/.test(value) || /javascript\s*:/i.test(value)) {
+          node.removeAttribute(attribute.name);
+        }
+      });
+
+      [...node.childNodes].forEach(clean);
+      if (!allowedTags.has(tag)) {
+        const parent = node.parentNode;
+        if (!parent) return;
+        while (node.firstChild) parent.insertBefore(node.firstChild, node);
+        node.remove();
+      }
+    }
+
+    [...template.content.childNodes].forEach(clean);
+    return template.content;
+  }
+
+  // JSON 字串會保留換行與引號的語意，再以 escapeHtml 放入 HTML attribute。
+  function inlineJson(value) {
+    return JSON.stringify(value ?? '')
+      .replace(/[\u2028\u2029]/g, ch => ch === '\u2028' ? '\\u2028' : '\\u2029')
+      .replace(/[<>&]/g, ch => `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`);
+  }
+
+  function selectStopHandler(uids, name, city) {
+    return escapeHtml(`selectStop(${inlineJson(uids)},${inlineJson(name)},${inlineJson(city)})`);
+  }
+
   // ── 渲染結果 ──────────────────────────────────────────────
   function setResult(id, text) {
     const el = document.getElementById('result-' + id);
     el.className = 'result-box';
-    if (text.startsWith('Error:')) {
-      el.innerHTML = `<div class="result-error">⚠️ ${text}</div>`;
-    } else {
-      el.innerHTML = marked.parse(text);
+    const resultText = String(text ?? '');
+    if (resultText.startsWith('Error:')) {
+      const error = document.createElement('div');
+      error.className = 'result-error';
+      error.textContent = `⚠️ ${resultText}`;
+      el.replaceChildren(error);
+      return;
     }
+
+    if (window.marked && typeof window.marked.parse === 'function') {
+      try {
+        el.replaceChildren(sanitizeMarkdown(window.marked.parse(resultText)));
+        return;
+      } catch {
+        // marked 解析失敗時改以純文字顯示，避免將未清理內容送入 DOM。
+      }
+    }
+    el.textContent = resultText;
   }
 
   // ── API 呼叫 ──────────────────────────────────────────────
@@ -748,7 +1207,110 @@
       const max_results = +document.getElementById('ge-max').value;
       return await callApi('/api/calendar/events', { calendar_id, query, days_ahead, days_back, max_results });
     },
+    'weather-weekly': async () => {
+      const county = document.getElementById('wk-county').value.trim();
+      const town = document.getElementById('wk-town').value.trim() || null;
+      if (!county) return '請輸入縣市名稱。';
+      return await callApi('/api/weather/weekly', { county, town });
+    },
+    'holiday-check': async () => {
+      const date = document.getElementById('hc-date').value || null;
+      return await callApi('/api/holiday/check', { date });
+    },
+    'holiday-list': async () => {
+      const year = +document.getElementById('hl-year').value;
+      const m = +document.getElementById('hl-month').value;
+      const month = m > 0 ? m : null;
+      return await callApi('/api/holiday/list', { year, month });
+    },
+    'exchange': async () => {
+      const currency = document.getElementById('ex-currency').value.trim() || null;
+      return await callApi('/api/exchange', { currency });
+    },
+    'cal-create': async () => {
+      const summary = document.getElementById('cc-summary').value.trim();
+      let start = document.getElementById('cc-start').value.trim();
+      let end = document.getElementById('cc-end').value.trim();
+      if (!summary || !start || !end) return '請填寫標題、開始時間與結束時間。';
+      if (document.getElementById('cc-allday').checked) {
+        start = start.slice(0, 10);  // 只取日期 → 全天事件
+        end = end.slice(0, 10);
+      }
+      const remind = document.getElementById('cc-remind').value;
+      return await callApi('/api/calendar/create', {
+        summary, start, end,
+        calendar_id: document.getElementById('cc-calid').value.trim() || 'primary',
+        location: document.getElementById('cc-loc').value.trim() || null,
+        description: document.getElementById('cc-desc').value.trim() || null,
+        attendees: splitList(document.getElementById('cc-att').value),
+        reminders_minutes: remind ? +remind : null,
+      });
+    },
+    'cal-update': async () => {
+      const event_id = document.getElementById('cu-id').value.trim();
+      if (!event_id) return '請輸入要修改的 event_id。';
+      const remind = document.getElementById('cu-remind').value;
+      return await callApi('/api/calendar/update', {
+        event_id,
+        calendar_id: document.getElementById('cu-calid').value.trim() || 'primary',
+        summary: document.getElementById('cu-summary').value.trim() || null,
+        start: document.getElementById('cu-start').value.trim() || null,
+        end: document.getElementById('cu-end').value.trim() || null,
+        location: document.getElementById('cu-loc').value.trim() || null,
+        description: document.getElementById('cu-desc').value.trim() || null,
+        attendees: splitList(document.getElementById('cu-att').value),
+        reminders_minutes: remind ? +remind : null,
+      });
+    },
+    'cal-delete': async () => {
+      const event_id = document.getElementById('cd-id').value.trim();
+      if (!event_id) return '請輸入要刪除的 event_id。';
+      if (!confirm('確定要刪除這個事件嗎？此動作無法復原。')) return '已取消刪除。';
+      return await callApi('/api/calendar/delete', {
+        event_id,
+        calendar_id: document.getElementById('cd-calid').value.trim() || 'primary',
+      });
+    },
+    'cal-free': async () => {
+      const time_min = document.getElementById('cf-min').value.trim();
+      const time_max = document.getElementById('cf-max').value.trim();
+      if (!time_min || !time_max) return '請輸入搜尋範圍的開始與結束時間。';
+      return await callApi('/api/calendar/free-time', {
+        time_min, time_max,
+        duration_minutes: +document.getElementById('cf-dur').value,
+        calendar_ids: splitList(document.getElementById('cf-cals').value) || ['primary'],
+        working_hours_only: document.getElementById('cf-work').checked,
+      });
+    },
   };
+
+  // 逗號 / 空白分隔字串 → 陣列（空則 null）
+  function splitList(text) {
+    const arr = (text || '').split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
+    return arr.length ? arr : null;
+  }
+
+  // 依選定縣市，載入該縣市的鄉鎮 / 行政區到下拉選單
+  async function loadTowns() {
+    const county = document.getElementById('wk-county').value;
+    const townSel = document.getElementById('wk-town');
+    townSel.innerHTML = '<option value="">載入中…</option>';
+    try {
+      const res = await fetch('/api/weather/towns?county=' + encodeURIComponent(county));
+      const data = await res.json();
+      const towns = data.towns || [];
+      let html = '<option value="">（代表行政區）</option>';
+      for (const t of towns) {
+        const town = String(t ?? '');
+        html += `<option value="${escapeHtml(town)}">${escapeHtml(town)}</option>`;
+      }
+      townSel.innerHTML = html;
+    } catch {
+      townSel.innerHTML = '<option value="">（無法載入，將用代表行政區）</option>';
+    }
+  }
+  // 頁面載入時先帶入預設縣市的鄉鎮
+  loadTowns();
 
   async function query(id) {
     setLoading(id);
@@ -796,41 +1358,41 @@
       });
       const data = await res.json();
 
-      if (data.error) { listEl.innerHTML = `<div class="result-error">⚠️ ${data.error}</div>`; return; }
-      if (!data.stops.length) { listEl.innerHTML = `<div class="result-placeholder">找不到含「${kw}」的站牌</div>`; return; }
+      if (data.error) { listEl.innerHTML = `<div class="result-error">⚠️ ${escapeHtml(data.error)}</div>`; return; }
+      if (!data.stops.length) { listEl.innerHTML = `<div class="result-placeholder">找不到含「${escapeHtml(kw)}」的站牌</div>`; return; }
 
       let html = `<div style="font-size:0.82rem;color:var(--muted);margin-bottom:12px;">
-        找到 <strong>${data.stops.length}</strong> 個站牌，點選查看到站資訊：</div>
+        找到 <strong>${escapeHtml(data.stops.length)}</strong> 個站牌，點選查看到站資訊：</div>
         <div style="display:flex;flex-direction:column;gap:8px;">`;
 
       for (const s of data.stops) {
         const addr = s.address
-          ? `<span style="color:var(--muted);font-size:0.8rem;">${s.address}</span>`
+          ? `<span style="color:var(--muted);font-size:0.8rem;">${escapeHtml(s.address)}</span>`
           : `<span style="color:#f39c12;font-size:0.78rem;">地址未知</span>`;
         const mapLink = (s.lat && s.lon)
-          ? `<a href="https://maps.google.com/?q=${s.lat},${s.lon}" target="_blank"
+          ? `<a href="${escapeHtml(`https://maps.google.com/?q=${encodeURIComponent(`${s.lat},${s.lon}`)}`)}" target="_blank"
                onclick="event.stopPropagation()"
                style="font-size:0.78rem;color:var(--primary);text-decoration:none;
                       padding:2px 8px;border:1px solid var(--primary);border-radius:4px;
                       white-space:nowrap;">🗺 地圖</a>`
           : '';
-        const safeName = s.name.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        const selectHandler = selectStopHandler(s.uids, s.name, city);
         html += `
           <div style="display:flex;align-items:center;border:1.5px solid var(--border);
                       border-radius:10px;background:#fff;overflow:hidden;
                       transition:border-color 0.15s;"
                onmouseover="this.style.borderColor='var(--primary)'"
                onmouseout="this.style.borderColor='var(--border)'">
-            <button onclick='selectStop(${JSON.stringify(s.uids)},"${safeName}","${city}")'
+            <button onclick="${selectHandler}"
               style="flex:1;display:flex;flex-direction:column;gap:3px;padding:11px 16px;
                      border:none;background:none;cursor:pointer;text-align:left;">
-              <span style="font-weight:600;font-size:0.95rem;">📍 ${s.name}</span>
+              <span style="font-weight:600;font-size:0.95rem;">📍 ${escapeHtml(s.name)}</span>
               ${addr}
             </button>
             <div style="display:flex;align-items:center;gap:8px;padding:0 14px;">
               ${mapLink}
               <span style="color:var(--primary);font-size:0.82rem;white-space:nowrap;cursor:pointer;"
-                    onclick='selectStop(${JSON.stringify(s.uids)},"${safeName}","${city}")'>
+                    onclick="${selectHandler}">
                 查到站 →
               </span>
             </div>
@@ -879,21 +1441,21 @@
   function renderStopResult(data) {
     const el = document.getElementById('result-bus-stop');
     el.className = 'result-box';
-    if (data.error) { el.innerHTML = `<div class="result-error">⚠️ ${data.error}</div>`; return; }
+    if (data.error) { el.innerHTML = `<div class="result-error">⚠️ ${escapeHtml(data.error)}</div>`; return; }
     if (!data.routes.length) { el.innerHTML = `<div class="result-placeholder">查無到站資料</div>`; return; }
 
     const dirGroups = { '去程': [], '返程': [] };
     data.routes.forEach(r => (dirGroups[r.direction] || dirGroups['去程']).push(r));
 
     const now = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-    let html = `<div style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;">更新時間：${now}・共 ${data.routes.length} 筆班次</div>`;
+    let html = `<div style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;">更新時間：${now}・共 ${escapeHtml(data.routes.length)} 筆班次</div>`;
 
     const icons = { now:'🚌', soon:'⏳', normal:'🕐', disabled:'🚫', unknown:'❓' };
 
     for (const [dir, routes] of Object.entries(dirGroups)) {
       if (!routes.length) continue;
       html += `<div style="font-size:0.78rem;font-weight:700;color:var(--muted);letter-spacing:1px;
-                            margin:14px 0 8px;">${dir}（${routes.length} 條路線）</div>
+                            margin:14px 0 8px;">${escapeHtml(dir)}（${escapeHtml(routes.length)} 條路線）</div>
                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;">`;
 
       for (const r of routes) {
@@ -902,10 +1464,10 @@
         html += `
           <div style="background:${s.bg};border:1.5px solid ${s.border};border-radius:10px;
                       padding:10px 14px;display:flex;align-items:center;gap:10px;min-width:130px;">
-            <span style="font-weight:700;font-size:1rem;">${r.route}</span>
+            <span style="font-weight:700;font-size:1rem;">${escapeHtml(r.route)}</span>
             <span style="background:${s.badge};color:#fff;font-size:0.75rem;
                          padding:2px 8px;border-radius:99px;font-weight:600;white-space:nowrap;">
-              ${icon} ${r.eta_text}
+              ${icon} ${escapeHtml(r.eta_text)}
             </span>
           </div>`;
       }
