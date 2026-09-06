@@ -109,7 +109,7 @@ cp .env.example .env
 
 ## 🌐 啟動本機 Web 介面
 
-FastAPI 介面是推薦的瀏覽器入口，提供自訂的響應式工作台（首頁摘要、天氣、交通、行事曆與生活資訊），不依賴 Gradio 作為主要 UI：
+FastAPI 介面是唯一的瀏覽器入口，提供自訂的響應式工作台（首頁摘要、天氣、交通、行事曆與生活資訊）。舊版 Gradio 介面（`app.py`）已於 1.3.0 移除：
 
 ```bash
 python -m uvicorn web_app:app --host 127.0.0.1 --port 8000
@@ -119,11 +119,7 @@ python -m uvicorn web_app:app --host 127.0.0.1 --port 8000
 
 首頁會並行載入天氣、假日與匯率摘要；單一資料來源暫時失敗時，其他卡片仍會顯示。偏好城市、公車站收藏與最近查詢只保存於瀏覽器的 `localStorage`，不會把金鑰或 OAuth 權杖送到前端。首頁聚合資料也可由 `GET /api/overview?city=台北市` 取得；Calendar 摘要必須明確帶上 `include_calendar=true` 才會觸發 OAuth。
 
-Gradio 仍保留作為相容性 / 備援入口（既有 `app.py` 工作流不受影響）：
-
-```bash
-python app.py
-```
+> **刪除事件需要明確確認。** `POST /api/calendar/delete` 必須帶 `confirm_delete: true`，否則不會呼叫下游 Google Calendar API（fail closed）。
 
 ## 🆓 免費公開部署：GitHub Pages + Render
 

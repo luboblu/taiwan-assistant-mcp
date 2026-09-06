@@ -13,7 +13,8 @@ from __future__ import annotations
 
 import asyncio
 import os
-from datetime import date, datetime
+import re
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 from zoneinfo import ZoneInfo
@@ -43,7 +44,7 @@ if not os.environ.get("GOOGLE_CREDENTIALS_FILE"):
 if not os.environ.get("GOOGLE_TOKEN_FILE"):
     os.environ["GOOGLE_TOKEN_FILE"] = str(APP_DIR / "google_token.json")
 
-from server import (
+from server import (  # noqa: E402 - credential paths must be set before import
     WeatherForecastInput,
     WeatherObservationInput,
     WeeklyForecastInput,
@@ -116,7 +117,7 @@ def _load_cors_origins() -> list[str]:
 
 CORS_ORIGINS = _load_cors_origins()
 
-app = FastAPI(title="台灣生活小助手", version="1.1.0")
+app = FastAPI(title="台灣生活小助手", version="1.3.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
@@ -272,6 +273,10 @@ class CalendarUpdateReq(GcalUpdateEventInput):
 
 class CalendarDeleteReq(GcalDeleteEventInput):
     event_id: str = Field(..., min_length=1)
+    confirm_delete: bool = Field(
+        False,
+        description="必須明確為 true 才會執行刪除；刪除不可復原。",
+    )
 
 
 class CalendarFreeTimeReq(GcalFindFreeTimeInput):
@@ -426,6 +431,9 @@ async def api_calendar_update(req: CalendarUpdateReq):
 
 @app.post("/api/calendar/delete")
 async def api_calendar_delete(req: CalendarDeleteReq):
+    # 刪除不可復原：未明確確認前一律不呼叫下游，fail closed。
+    if not req.confirm_delete:
+        return {"result": "請先確認要刪除此不可復原的行事曆事件（confirm_delete 必須為 true）。"}
     result = await gcal_delete_event(
         GcalDeleteEventInput(event_id=req.event_id, calendar_id=req.calendar_id)
     )
@@ -448,13 +456,9 @@ async def api_calendar_free_time(req: CalendarFreeTimeReq):
 
 # ── 站牌查詢 ──────────────────────────────────────────────────
 
-import re as _re
-from typing import List
-
-
 def _clean_address(addr: str) -> str:
     """移除地址中的方向標註，例如 (向東)、（往台北）"""
-    return _re.sub(r'[（(][^）)]{1,10}[）)]', '', addr or '').strip()
+    return re.sub(r'[（(][^）)]{1,10}[）)]', '', addr or '').strip()
 
 
 def _escape_odata_string(value: str) -> str:
