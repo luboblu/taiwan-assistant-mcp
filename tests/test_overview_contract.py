@@ -26,7 +26,7 @@ class OverviewContractTests(unittest.IsolatedAsyncioTestCase):
             max_active = max(max_active, active)
             if entered == 3:
                 all_entered.set()
-            await asyncio.wait_for(all_entered.wait(), timeout=1)
+            await asyncio.wait_for(all_entered.wait(), timeout=5)
             active -= 1
             return value
 

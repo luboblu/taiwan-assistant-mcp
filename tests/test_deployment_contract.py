@@ -1,4 +1,5 @@
 import os
+import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -6,8 +7,6 @@ from unittest.mock import patch
 from fastapi.middleware.cors import CORSMiddleware
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-
-import sys
 
 sys.path.insert(0, str(PROJECT_ROOT))
 
