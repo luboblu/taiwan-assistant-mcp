@@ -1,11 +1,14 @@
 import asyncio
+import sys
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import app
-import server
-import web_app
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+import server  # noqa: E402
+import web_app  # noqa: E402
 
 
 class SecurityContractTests(unittest.TestCase):
@@ -27,12 +30,30 @@ class SecurityContractTests(unittest.TestCase):
 
         self.assertIn("找不到", result)
 
-    def test_calendar_delete_requires_confirmation_in_gradio_adapter(self) -> None:
-        with patch.object(app, "gcal_delete_event") as delete:
-            result = asyncio.run(app.do_gcal_delete("event-1", "primary", False))
+    def test_calendar_delete_requires_confirmation_in_web_api(self) -> None:
+        with patch.object(web_app, "gcal_delete_event") as delete:
+            response = asyncio.run(
+                web_app.api_calendar_delete(
+                    web_app.CalendarDeleteReq(event_id="event-1")
+                )
+            )
 
-        self.assertIn("確認", result)
+        self.assertIn("確認", response["result"])
         delete.assert_not_called()
+
+    def test_calendar_delete_proceeds_when_confirmed(self) -> None:
+        async def _deleted(_payload):
+            return "已刪除"
+
+        with patch.object(web_app, "gcal_delete_event", side_effect=_deleted) as delete:
+            response = asyncio.run(
+                web_app.api_calendar_delete(
+                    web_app.CalendarDeleteReq(event_id="event-1", confirm_delete=True)
+                )
+            )
+
+        self.assertEqual(response["result"], "已刪除")
+        delete.assert_called_once()
 
     def test_calendar_delete_fails_closed_when_preflight_fails(self) -> None:
         service = Mock()

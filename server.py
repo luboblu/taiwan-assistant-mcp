@@ -788,8 +788,9 @@ async def tdx_get_thsr_schedule(params: THSRScheduleInput) -> str:
             if isinstance(data, dict) else []
         )
 
-        origin_id = _THSR_STATION_MAP[params.origin]
-        dest_id   = _THSR_STATION_MAP[params.destination]
+        # 台北/臺北 都接受
+        def name_match(query: str, name: str) -> bool:
+            return query == name or query.replace("台", "臺") == name or query.replace("臺", "台") == name
 
         trains_raw = []
         for entry in raw:
@@ -797,9 +798,6 @@ async def tdx_get_thsr_schedule(params: THSRScheduleInput) -> str:
             stops = train.get("StopTimes") or []
             # 用中文站名比對，不依賴站碼
             stop_names = [s.get("StationName", {}).get("Zh_tw", "") for s in stops]
-            # 台北/臺北 都接受
-            def name_match(query: str, name: str) -> bool:
-                return query == name or query.replace("台", "臺") == name or query.replace("臺", "台") == name
 
             o_indices = [i for i, n in enumerate(stop_names) if name_match(params.origin, n)]
             d_indices = [i for i, n in enumerate(stop_names) if name_match(params.destination, n)]
@@ -1262,7 +1260,7 @@ async def holiday_list(params: HolidayListInput) -> str:
 
         date_fmt = f"{key[:4]}-{key[4:6]}-{key[6:8]}"
         if is_makeup:
-            label = f"🔧 補班日（需上班）"
+            label = "🔧 補班日（需上班）"
             count_makeup += 1
         elif is_holiday:
             label = f"🎉 {desc}" if desc else "🎉 放假"
