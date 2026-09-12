@@ -20,18 +20,17 @@
 """
 
 import asyncio
+import contextlib
 import os
 import sys
 
 # Windows 主控台預設 cp950，emoji 會噴 UnicodeEncodeError，強制改用 UTF-8 輸出
-try:
+with contextlib.suppress(AttributeError, ValueError):
     sys.stdout.reconfigure(encoding="utf-8")
-except (AttributeError, ValueError):
-    pass
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import server as s  # noqa: E402
+import server as s
 
 
 async def test_holiday() -> None:
