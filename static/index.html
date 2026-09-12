@@ -954,10 +954,24 @@
             <input type="text" id="ba-route" placeholder="例如：299、0東、紅10" />
           </div>
           <div class="form-group">
-            <label>篩選站牌（可留空）</label>
+            <label for="ba-stop">篩選站牌（可留空）</label>
             <input type="text" id="ba-stop" placeholder="例如：台北車站" />
           </div>
+          <div class="form-group">
+            <label for="ba-stopid">站牌代碼（可留空）</label>
+            <input type="text" id="ba-stopid" placeholder="例如：TPE12345，優先於站牌名稱" />
+          </div>
+          <div class="form-group">
+            <label for="ba-direction">方向</label>
+            <select id="ba-direction">
+              <option value="">去程與返程</option>
+              <option value="0">去程</option>
+              <option value="1">返程</option>
+            </select>
+          </div>
         </div>
+        <p class="muted">同名站牌很常見。查詢結果會附上每個站牌的代碼，
+          若比對到多個站牌，改填代碼即可精確鎖定。</p>
         <button class="btn btn-primary" onclick="query('bus-arrival')">
           &#x1F50D; 查詢即時到站
         </button>
@@ -1757,8 +1771,11 @@
       const city = document.getElementById('ba-city').value.trim();
       const route_name = document.getElementById('ba-route').value.trim();
       const stop_name = document.getElementById('ba-stop').value.trim() || null;
+      const stop_id = document.getElementById('ba-stopid').value.trim() || null;
+      const dirRaw = document.getElementById('ba-direction').value;
+      const direction = dirRaw === '' ? null : Number(dirRaw);
       if (!city || !route_name) return '請輸入城市與路線名稱。';
-      return await callApi('/api/bus/arrival', { city, route_name, stop_name });
+      return await callApi('/api/bus/arrival', { city, route_name, stop_name, stop_id, direction });
     },
     'train': async () => {
       const origin = document.getElementById('tr-origin').value;

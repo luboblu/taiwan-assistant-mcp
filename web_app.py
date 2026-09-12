@@ -311,7 +311,13 @@ async def api_bus_routes(req: BusRoutesReq):
 @app.post("/api/bus/arrival")
 async def api_bus_arrival(req: BusArrivalReq):
     result = await tdx_get_bus_arrival(
-        BusArrivalInput(city=req.city, route_name=req.route_name, stop_name=req.stop_name)
+        BusArrivalInput(
+            city=req.city,
+            route_name=req.route_name,
+            stop_name=req.stop_name,
+            stop_id=req.stop_id,
+            direction=req.direction,
+        )
     )
     return {"result": result}
 
