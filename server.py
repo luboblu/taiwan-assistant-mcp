@@ -30,7 +30,7 @@ import re
 import time
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
@@ -72,6 +72,58 @@ mcp = FastMCP("taiwan_assistant_mcp")
 # ============================================================
 # 共用工具函數
 # ============================================================
+
+
+# 錯誤代碼分類：供呼叫端以機器可讀的方式區分「服務故障」與「查無資料」。
+# _handle_api_error 是 API 類錯誤的唯一產生者，因此以訊息前綴回推代碼是可靠的。
+ERROR_PREFIX = "Error:"
+
+_ERROR_CODE_BY_MESSAGE: Dict[str, str] = {
+    "Error: 認證失敗，請確認 API 金鑰或授權設定是否正確。": "UPSTREAM_AUTH",
+    "Error: 沒有存取權限，請確認 API 權限設定。": "UPSTREAM_FORBIDDEN",
+    "Error: 找不到指定資源，請確認查詢參數是否正確。": "UPSTREAM_NOT_FOUND",
+    "Error: 請求過於頻繁，請稍後再試。": "UPSTREAM_RATE_LIMITED",
+    "Error: 請求逾時，請再試一次。": "UPSTREAM_TIMEOUT",
+}
+
+
+# 「查無資料」訊息不帶 Error: 前綴，代表查詢本身成功但沒有命中資料。
+_NO_DATA_PREFIXES = ("找不到", "查無")
+
+
+def classify_result(text: str) -> Tuple[str, Optional[str]]:
+    """把工具回傳的字串分類成 (status, error_code)。
+
+    status:
+      - "ok"    有內容
+      - "empty" 查詢成功但沒有資料（訊息以「找不到」「查無」開頭）
+      - "error" 上游故障或參數錯誤（訊息以 "Error:" 開頭）
+
+    error_code 只在 status 為 "error" 時有值。
+
+    限制：分類依賴訊息前綴，因為工具函式一律回傳字串而非結構化結果。
+    _handle_api_error 是 API 類錯誤的唯一產生者，所以 "error" 的判定可靠；
+    "empty" 則較粗略——目前的「找不到…」訊息同時涵蓋「真的沒有資料」與
+    「使用者給了無效參數」兩種情況，若要再細分需要改動各工具的回傳型別。
+    """
+    if not isinstance(text, str):
+        return "ok", None
+
+    if not text.startswith(ERROR_PREFIX):
+        stripped = text.lstrip()
+        if stripped.startswith(_NO_DATA_PREFIXES):
+            return "empty", None
+        return "ok", None
+
+    exact = _ERROR_CODE_BY_MESSAGE.get(text)
+    if exact:
+        return "error", exact
+    if text.startswith("Error: API 請求失敗，HTTP 狀態碼"):
+        return "error", "UPSTREAM_HTTP_ERROR"
+    if text.startswith("Error: 發生未預期的錯誤"):
+        return "error", "INTERNAL_ERROR"
+    # 其餘為參數驗證類訊息，例如不支援的城市。
+    return "error", "INVALID_REQUEST"
 
 
 def _handle_api_error(e: Exception) -> str:
