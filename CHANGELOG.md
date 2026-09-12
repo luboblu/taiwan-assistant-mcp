@@ -2,6 +2,40 @@
 
 All notable changes to this project are documented here.
 
+## [1.4.0] - 2026-09-12
+
+### Fixed
+
+- Bus arrival no longer answers with the wrong stop. `stop_name` was matched as a substring across
+  both directions, so asking for 中山 on a route serving 中山國小 and 中山國中 returned both as
+  though either were the stop meant. Added a stable `stop_id` and a `direction` filter, made an
+  exact name match win over a substring one, and made an ambiguous name return the candidate stops
+  with their ids instead of picking one. Every result line now carries its `stop_id`.
+- A single Google Calendar request no longer freezes the whole server. The OAuth flow and all
+  thirteen `googleapiclient` `.execute()` calls ran directly on the event loop, so on first use the
+  service stopped answering any request — health, weather, transit — until the browser sign-in
+  completed, or indefinitely if nobody was there. They now run on a worker thread.
+
+### Added
+
+- Responses carry `status`, `error_code`, `source` and `fetched_at` alongside `result`, so a caller
+  can tell a provider outage from real content. `status` is `ok`, `empty` for a query that matched
+  nothing, or `error` with a specific code. `result` is unchanged, so existing callers are
+  unaffected.
+- Google Calendar failures have their own codes rather than a generic one:
+  `CALENDAR_CREDENTIALS_MISSING`, `CALENDAR_AUTH_REQUIRED`, `CALENDAR_FORBIDDEN`,
+  `CALENDAR_NOT_FOUND`, `CALENDAR_ERROR`, and `CALENDAR_PREFLIGHT_FAILED` for the fail-closed
+  delete path where nothing was deleted.
+- `ruff.toml`, with the rules this project wants and a written reason for each one that is off.
+  Ruff is enforced in CI at a pinned version.
+- `docs/review/` — feature, interface and workflow reviews of the project.
+- `tests/__init__.py`, so `python -m unittest tests.<module>` works and not only discovery.
+
+### Changed
+
+- Test suite grew from 20 to 48 tests, covering stop disambiguation, response classification,
+  calendar error codes and the event-loop guarantee.
+
 ## [1.3.0] - 2026-09-06
 
 ### Removed
