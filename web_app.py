@@ -118,7 +118,7 @@ def _load_cors_origins() -> list[str]:
 
 CORS_ORIGINS = _load_cors_origins()
 
-app = FastAPI(title="台灣生活小助手", version="1.3.0")
+app = FastAPI(title="台灣生活小助手", version="1.4.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
