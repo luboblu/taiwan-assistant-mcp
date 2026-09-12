@@ -61,6 +61,61 @@ class ClassifyResultTests(unittest.TestCase):
                 self.assertIsNotNone(code)
 
 
+class CalendarErrorCodeTests(unittest.TestCase):
+    """行事曆失敗過去全部落到 INVALID_REQUEST，呼叫端無法分辨該怎麼處理。"""
+
+    def test_missing_credentials_file(self) -> None:
+        text = "Error: 找不到 Google OAuth2 憑證檔案（google_credentials.json）。"
+        self.assertEqual(server.classify_result(text), ("error", "CALENDAR_CREDENTIALS_MISSING"))
+
+    def test_expired_or_revoked_token_needs_reauth(self) -> None:
+        text = "Error: 無法取得行事曆事件：RefreshError: invalid_grant"
+        self.assertEqual(server.classify_result(text), ("error", "CALENDAR_AUTH_REQUIRED"))
+
+    def test_insufficient_permission(self) -> None:
+        text = "Error: 無法建立行事曆事件：<HttpError 403 insufficientPermissions>"
+        self.assertEqual(server.classify_result(text), ("error", "CALENDAR_FORBIDDEN"))
+
+    def test_event_not_found(self) -> None:
+        text = "Error: 無法刪除行事曆事件：<HttpError 404 notFound>"
+        self.assertEqual(server.classify_result(text), ("error", "CALENDAR_NOT_FOUND"))
+
+    def test_unrecognised_calendar_failure_still_gets_a_calendar_code(self) -> None:
+        text = "Error: 無法查詢行事曆空檔：something new"
+        self.assertEqual(server.classify_result(text), ("error", "CALENDAR_ERROR"))
+
+    def test_delete_preflight_failure_has_its_own_code(self) -> None:
+        """刪除前預檢失敗是 fail-closed，沒有真的刪除，值得單獨追蹤。"""
+        text = "Error: 無法預檢待刪除的行事曆事件，為安全起見未執行刪除：lookup failed"
+        self.assertEqual(server.classify_result(text), ("error", "CALENDAR_PREFLIGHT_FAILED"))
+
+    def test_non_calendar_errors_are_unaffected(self) -> None:
+        self.assertEqual(
+            server.classify_result("Error: 不支援城市「火星」。"), ("error", "INVALID_REQUEST")
+        )
+        self.assertEqual(
+            server.classify_result("Error: 請求逾時，請再試一次。"), ("error", "UPSTREAM_TIMEOUT")
+        )
+
+    def test_real_delete_preflight_failure_classifies(self) -> None:
+        """用工具真正的輸出驗證，而不是自己手寫的字串。"""
+        from unittest.mock import Mock
+
+        service = Mock()
+        events = Mock()
+        service.events.return_value = events
+        events.get.return_value.execute.side_effect = RuntimeError("lookup failed")
+
+        with patch.object(server, "_build_google_calendar_service", return_value=service):
+            import asyncio
+            result = asyncio.run(
+                server.gcal_delete_event(server.GcalDeleteEventInput(event_id="e1"))
+            )
+
+        self.assertEqual(server.classify_result(result), ("error", "CALENDAR_PREFLIGHT_FAILED"))
+        events.delete.assert_not_called()
+
+
 class EnvelopeEndpointTests(unittest.TestCase):
     def setUp(self) -> None:
         self.client = TestClient(web_app.app)
