@@ -50,20 +50,10 @@ ignore = [
 # `ruff check --fix` DELETES them, silently removing the marker that tells the next
 # person the ordering is intentional. Do not add E402 to ignore or per-file-ignores.
 
-# ── Known remaining, NOT yet clean ────────────────────────────────────────────
-# `ruff check .` currently reports 3 issues. They are deliberately NOT silenced,
-# because each is a genuine (small) improvement rather than a false positive:
-#
-#   server.py:1542            SIM108  if/else block that reads better as a ternary
-#   tests/smoke_test.py:27    SIM105  try/except/pass -> contextlib.suppress
-#   tests/smoke_test.py:34    RUF100  the one genuinely redundant `# noqa: E402`
-#                                     (the other 11 in the repo DO suppress a real
-#                                     E402 — verified with `ruff check --select E402`)
-#
-# They are left for a follow-up (T-022) because both files have open PRs against
-# them right now and this config should not collide with that work. Wire ruff into
-# .github/workflows/ci.yml only once these 3 are cleared, otherwise CI goes red on
-# arrival.
+# ── Enforcement ──────────────────────────────────────────────────────────────
+# `ruff check .` is clean and is enforced in CI (.github/workflows/ci.yml), with the
+# ruff version pinned there. A floating version would let a new ruff release turn CI
+# red without anyone touching the code.
 #
 # ── Deferred rule families ───────────────────────────────────────────────────
 # UP (pyupgrade) is NOT enabled yet: it wants ~110 changes (List->list, Optional[X]
