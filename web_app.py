@@ -14,9 +14,9 @@ from __future__ import annotations
 import asyncio
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo
 
 try:
@@ -45,6 +45,7 @@ if not os.environ.get("GOOGLE_TOKEN_FILE"):
     os.environ["GOOGLE_TOKEN_FILE"] = str(APP_DIR / "google_token.json")
 
 from server import (  # noqa: E402 - credential paths must be set before import
+    classify_result,
     WeatherForecastInput,
     WeatherObservationInput,
     WeeklyForecastInput,
@@ -128,6 +129,23 @@ app.add_middleware(
 
 # ── 前端靜態檔案 ──────────────────────────────────────────────
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+def _envelope(result: str, source: Optional[str] = None) -> Dict[str, Any]:
+    """統一回應格式。
+
+    保留 `result` 以維持既有前端與呼叫端相容；另外附上機器可讀的
+    status / error_code / source / fetched_at，讓呼叫端能區分
+    「上游服務故障」與「查詢成功但沒有資料」——先前兩者都只是字串。
+    """
+    status, error_code = classify_result(result)
+    return {
+        "result": result,
+        "status": status,
+        "error_code": error_code,
+        "source": source,
+        "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
 
 
 @app.get("/")
@@ -289,7 +307,7 @@ class CalendarFreeTimeReq(GcalFindFreeTimeInput):
 @app.post("/api/weather/forecast")
 async def api_weather_forecast(req: WeatherForecastReq):
     result = await weather_get_forecast(WeatherForecastInput(city=req.city))
-    return {"result": result}
+    return _envelope(result, "CWA")
 
 
 @app.post("/api/weather/observation")
@@ -297,7 +315,7 @@ async def api_weather_observation(req: WeatherObservationReq):
     result = await weather_get_observation(
         WeatherObservationInput(station_name=req.station_name, limit=req.limit)
     )
-    return {"result": result}
+    return _envelope(result, "CWA")
 
 
 @app.post("/api/bus/routes")
@@ -305,7 +323,7 @@ async def api_bus_routes(req: BusRoutesReq):
     result = await tdx_get_bus_routes(
         BusRouteInput(city=req.city, route_name=req.route_name, limit=req.limit)
     )
-    return {"result": result}
+    return _envelope(result, "TDX")
 
 
 @app.post("/api/bus/arrival")
@@ -319,7 +337,7 @@ async def api_bus_arrival(req: BusArrivalReq):
             direction=req.direction,
         )
     )
-    return {"result": result}
+    return _envelope(result, "TDX")
 
 
 @app.post("/api/train/schedule")
@@ -330,7 +348,7 @@ async def api_train_schedule(req: TrainScheduleReq):
             date=req.date, limit=req.limit
         )
     )
-    return {"result": result}
+    return _envelope(result, "TDX")
 
 
 @app.post("/api/thsr/schedule")
@@ -341,13 +359,13 @@ async def api_thsr_schedule(req: THSRScheduleReq):
             date=req.date, limit=req.limit
         )
     )
-    return {"result": result}
+    return _envelope(result, "TDX")
 
 
 @app.get("/api/calendar/list")
 async def api_calendar_list():
     result = await gcal_list_calendars(CalendarListInput())
-    return {"result": result}
+    return _envelope(result, "GOOGLE_CALENDAR")
 
 
 @app.post("/api/calendar/events")
@@ -361,7 +379,7 @@ async def api_calendar_events(req: CalendarEventsReq):
             query=req.query,
         )
     )
-    return {"result": result}
+    return _envelope(result, "GOOGLE_CALENDAR")
 
 
 # ── 一週天氣 / 假日 / 匯率 ────────────────────────────────────
@@ -371,7 +389,7 @@ async def api_weather_weekly(req: WeeklyForecastReq):
     result = await weather_get_weekly_forecast(
         WeeklyForecastInput(county=req.county, town=req.town)
     )
-    return {"result": result}
+    return _envelope(result, "CWA")
 
 
 @app.get("/api/weather/towns")
@@ -383,19 +401,19 @@ async def api_weather_towns(county: str = Query(..., min_length=1)):
 @app.post("/api/holiday/check")
 async def api_holiday_check(req: HolidayCheckReq):
     result = await holiday_check(HolidayCheckInput(date=req.date))
-    return {"result": result}
+    return _envelope(result, "TAIWAN_CALENDAR")
 
 
 @app.post("/api/holiday/list")
 async def api_holiday_list(req: HolidayListReq):
     result = await holiday_list(HolidayListInput(year=req.year, month=req.month))
-    return {"result": result}
+    return _envelope(result, "TAIWAN_CALENDAR")
 
 
 @app.post("/api/exchange")
 async def api_exchange(req: ExchangeRateReq):
     result = await get_exchange_rate(ExchangeRateInput(currency=req.currency))
-    return {"result": result}
+    return _envelope(result, "BANK_OF_TAIWAN")
 
 
 # ── Google 行事曆 寫入 / 找空檔 ──────────────────────────────
@@ -414,7 +432,7 @@ async def api_calendar_create(req: CalendarCreateReq):
             reminders_minutes=req.reminders_minutes,
         )
     )
-    return {"result": result}
+    return _envelope(result, "GOOGLE_CALENDAR")
 
 
 @app.post("/api/calendar/update")
@@ -432,18 +450,21 @@ async def api_calendar_update(req: CalendarUpdateReq):
             reminders_minutes=req.reminders_minutes,
         )
     )
-    return {"result": result}
+    return _envelope(result, "GOOGLE_CALENDAR")
 
 
 @app.post("/api/calendar/delete")
 async def api_calendar_delete(req: CalendarDeleteReq):
     # 刪除不可復原：未明確確認前一律不呼叫下游，fail closed。
     if not req.confirm_delete:
-        return {"result": "請先確認要刪除此不可復原的行事曆事件（confirm_delete 必須為 true）。"}
+        return _envelope(
+            "Error: 請先確認要刪除此不可復原的行事曆事件（confirm_delete 必須為 true）。",
+            "GOOGLE_CALENDAR",
+        )
     result = await gcal_delete_event(
         GcalDeleteEventInput(event_id=req.event_id, calendar_id=req.calendar_id)
     )
-    return {"result": result}
+    return _envelope(result, "GOOGLE_CALENDAR")
 
 
 @app.post("/api/calendar/free-time")
@@ -457,7 +478,7 @@ async def api_calendar_free_time(req: CalendarFreeTimeReq):
             working_hours_only=req.working_hours_only,
         )
     )
-    return {"result": result}
+    return _envelope(result, "GOOGLE_CALENDAR")
 
 
 # ── 站牌查詢 ──────────────────────────────────────────────────
