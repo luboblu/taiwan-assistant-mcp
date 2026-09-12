@@ -1,0 +1,74 @@
+# Ruff configuration for taiwan-assistant-mcp.
+#
+# The point of this file is to make `ruff check .` pass on the current tree, so a
+# failure means something new and real. Rules we do NOT want are turned off here
+# with a reason, rather than left to be discovered by whoever runs --fix next.
+
+target-version = "py310"
+line-length = 100
+
+exclude = ["__pycache__", ".venv", "venv", "build", "dist"]
+
+[lint]
+select = [
+    "E",    # pycodestyle errors — includes E402, see below
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "RUF",  # ruff-specific
+]
+
+ignore = [
+    # Long lines are not worth churning this tree over; the real limit is review.
+    "E501",
+
+    # Blind `except Exception` is DELIBERATE here. Every one of these funnels into
+    # server._handle_api_error, which is the single producer of API error messages
+    # and therefore what classify_result() depends on to return a reliable "error"
+    # status. Narrowing them would change user-facing failure behaviour and weaken
+    # the structured error envelope. Do not "fix" these without redesigning both.
+    "BLE001",
+
+    # Nested `with` blocks read fine in the tests that trigger this.
+    "SIM117",
+
+    # This is a Traditional Chinese codebase. RUF001/2/3 flag full-width CJK
+    # punctuation (，：「」（）) as "ambiguous unicode" — 736 hits, every one a
+    # false positive. They are correct punctuation for the language the strings,
+    # docstrings and comments are written in.
+    "RUF001",
+    "RUF002",
+    "RUF003",
+]
+
+# NOTE on E402 (module-import-not-at-top-of-file): it is deliberately left ENABLED.
+# Import order is load-bearing here — dotenv must load, and credential paths must be
+# set, BEFORE `server` is imported — and the `# noqa: E402` comments across the tests,
+# app and web app mark those intentional late imports. Enabling E402 is what keeps
+# those comments meaningful. With E402 off, ruff reports them as unused noqa and
+# `ruff check --fix` DELETES them, silently removing the marker that tells the next
+# person the ordering is intentional. Do not add E402 to ignore or per-file-ignores.
+
+# ── Known remaining, NOT yet clean ────────────────────────────────────────────
+# `ruff check .` currently reports 3 issues. They are deliberately NOT silenced,
+# because each is a genuine (small) improvement rather than a false positive:
+#
+#   server.py:1542            SIM108  if/else block that reads better as a ternary
+#   tests/smoke_test.py:27    SIM105  try/except/pass -> contextlib.suppress
+#   tests/smoke_test.py:34    RUF100  the one genuinely redundant `# noqa: E402`
+#                                     (the other 11 in the repo DO suppress a real
+#                                     E402 — verified with `ruff check --select E402`)
+#
+# They are left for a follow-up (T-022) because both files have open PRs against
+# them right now and this config should not collide with that work. Wire ruff into
+# .github/workflows/ci.yml only once these 3 are cleared, otherwise CI goes red on
+# arrival.
+#
+# ── Deferred rule families ───────────────────────────────────────────────────
+# UP (pyupgrade) is NOT enabled yet: it wants ~110 changes (List->list, Optional[X]
+# ->X|None) across server.py and web_app.py. All safe on py310 and autofixable, but
+# it is pure churn that would conflict with in-flight feature work. Enable it in one
+# dedicated commit when the tree is quiet.
+# DTZ is NOT enabled yet: DTZ007 flags 2 naive `strptime` calls (server.py:1278 and
+# :1526). Those may be real timezone bugs and deserve a look, not a blanket ignore.
