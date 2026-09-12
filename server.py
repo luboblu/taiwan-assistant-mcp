@@ -444,7 +444,26 @@ class BusArrivalInput(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, validate_assignment=True, extra="forbid")
     city: str = Field(..., description="城市名稱，例如：台北、高雄")
     route_name: str = Field(..., description="路線名稱，例如：299、0東")
-    stop_name: Optional[str] = Field(None, description="篩選特定站牌名稱，例如：台北車站")
+    stop_name: Optional[str] = Field(
+        None,
+        description=(
+            "篩選站牌名稱，例如：台北車站。同名或相似站牌很常見，"
+            "若比對到多個不同站牌會回傳候選清單與 stop_id，請改用 stop_id 再查一次。"
+        ),
+    )
+    stop_id: Optional[str] = Field(
+        None,
+        description=(
+            "站牌代碼（StopID），唯一且穩定，優先於 stop_name。"
+            "可由本工具的候選清單或 tdx_search_bus_stop 取得。"
+        ),
+    )
+    direction: Optional[int] = Field(
+        None,
+        description="行駛方向：0=去程，1=返程；不填則兩個方向都回傳。",
+        ge=0,
+        le=1,
+    )
 
 
 class TrainScheduleInput(BaseModel):
@@ -560,17 +579,21 @@ async def tdx_get_bus_arrival(params: BusArrivalInput) -> str:
         params (BusArrivalInput):
             - city (str): 城市名稱
             - route_name (str): 路線名稱，例如「299」、「0東」
-            - stop_name (Optional[str]): 篩選特定站牌名稱
+            - stop_name (Optional[str]): 篩選站牌名稱（模糊比對）
+            - stop_id (Optional[str]): 站牌代碼，唯一且穩定，優先於 stop_name
+            - direction (Optional[int]): 0=去程，1=返程；不填則兩個方向都回傳
 
     Returns:
-        str: 即時到站資訊（去程 / 返程），每站包含：
+        str: 即時到站資訊，每站包含：
             - 站牌名稱
             - 預計到站時間（分鐘）或狀態說明
             - 車牌號碼（若有）
+            - 站牌代碼，可用於下次以 stop_id 精確查詢
 
     Error Handling:
-        - 找不到路線時回傳提示
-        - 站牌篩選無結果時回傳提示
+        - 找不到路線、方向或站牌時回傳提示
+        - stop_name 模糊比對到多個不同站牌時，回傳候選清單與各自的 stop_id，
+          而非任選一個回答（避免同名站牌給出看似合理但錯誤的結果）
     """
     city_en = _TDX_CITY_MAP.get(params.city)
     if not city_en:
@@ -590,10 +613,42 @@ async def tdx_get_bus_arrival(params: BusArrivalInput) -> str:
         if not data:
             return f"找不到{params.city}「{params.route_name}」路線的即時到站資訊。"
 
-        if params.stop_name:
-            data = [d for d in data if params.stop_name in d.get("StopName", {}).get("Zh_tw", "")]
+        if params.direction is not None:
+            data = [d for d in data if d.get("Direction") == params.direction]
+            if not data:
+                dir_label = "去程" if params.direction == 0 else "返程"
+                return f"{params.city}「{params.route_name}」沒有{dir_label}的到站資訊。"
+
+        # StopID 唯一且穩定，優先於名稱比對。
+        if params.stop_id:
+            data = [d for d in data if str(d.get("StopID", "")) == params.stop_id]
+            if not data:
+                return f"找不到站牌代碼「{params.stop_id}」的到站資訊。"
+
+        elif params.stop_name:
+            needle = params.stop_name
+            exact = [d for d in data if d.get("StopName", {}).get("Zh_tw", "") == needle]
+            data = exact or [
+                d for d in data if needle in d.get("StopName", {}).get("Zh_tw", "")
+            ]
             if not data:
                 return f"找不到站牌「{params.stop_name}」的到站資訊。"
+
+            # 模糊比對命中多個「不同」站牌時，回傳候選清單而不是猜一個。
+            if not exact:
+                candidates: Dict[str, str] = {}
+                for d in data:
+                    sid = str(d.get("StopID", ""))
+                    if sid and sid not in candidates:
+                        candidates[sid] = d.get("StopName", {}).get("Zh_tw", "未知")
+                if len({n for n in candidates.values()}) > 1:
+                    lines = [
+                        f"「{params.stop_name}」比對到多個站牌，請改用 stop_id 指定其中一個：",
+                        "",
+                    ]
+                    for sid, name in list(candidates.items())[:20]:
+                        lines.append(f"- **{name}**　stop_id：`{sid}`")
+                    return _truncate("\n".join(lines))
 
         lines = [f"# 🚌 {params.city} {params.route_name} 即時到站", ""]
         lines.append(f"*查詢時間：{datetime.now(TW_TZ).strftime('%H:%M:%S')}*")
@@ -617,7 +672,9 @@ async def tdx_get_bus_arrival(params: BusArrivalInput) -> str:
                     eta_str = _STOP_STATUS.get(status_code, "無資料")
 
                 plate_str = f"（{plate}）" if plate and plate not in ("", "None") else ""
-                lines.append(f"- **{stop_name}**：{eta_str}{plate_str}")
+                sid = str(stop.get("StopID", ""))
+                sid_str = f"　`{sid}`" if sid else ""
+                lines.append(f"- **{stop_name}**：{eta_str}{plate_str}{sid_str}")
             lines.append("")
 
         return _truncate("\n".join(lines))
