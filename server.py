@@ -22,6 +22,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import csv
 import io
 import json
@@ -1037,8 +1038,8 @@ async def gcal_list_calendars(params: CalendarListInput) -> str:
         - OAuth2 未授權時引導使用者完成授權流程
     """
     try:
-        service = _build_google_calendar_service()
-        result = service.calendarList().list().execute()
+        service = await asyncio.to_thread(_build_google_calendar_service)
+        result = await asyncio.to_thread(service.calendarList().list().execute)
         items = result.get("items", [])
 
         if not items:
@@ -1098,7 +1099,7 @@ async def gcal_list_events(params: CalendarEventsInput) -> str:
         - 查詢範圍內無事件時回傳提示
     """
     try:
-        service = _build_google_calendar_service()
+        service = await asyncio.to_thread(_build_google_calendar_service)
 
         now_utc = datetime.now(timezone.utc)
         time_min = (now_utc - timedelta(days=params.days_back or 0)).isoformat()
@@ -1115,7 +1116,9 @@ async def gcal_list_events(params: CalendarEventsInput) -> str:
         if params.query:
             list_params["q"] = params.query
 
-        events_result = service.events().list(**list_params).execute()
+        events_result = await asyncio.to_thread(
+            service.events().list(**list_params).execute
+        )
         events = events_result.get("items", [])
 
         if not events:
@@ -1986,12 +1989,12 @@ async def gcal_create_event(params: GcalCreateEventInput) -> str:
         - scope 不足（未重新授權）時會回傳權限錯誤，請刪除 google_token.json 重新授權
     """
     try:
-        service = _build_google_calendar_service()
+        service = await asyncio.to_thread(_build_google_calendar_service)
         body = _build_event_body(params)
-        event = (
+        event = await asyncio.to_thread(
             service.events()
             .insert(calendarId=params.calendar_id or "primary", body=body)
-            .execute()
+            .execute
         )
         return "# ✅ 已建立行事曆事件\n\n" + _format_gcal_event_summary(event)
     except FileNotFoundError as e:
@@ -2024,18 +2027,18 @@ async def gcal_update_event(params: GcalUpdateEventInput) -> str:
         - scope 不足時請刪除 google_token.json 重新授權
     """
     try:
-        service = _build_google_calendar_service()
+        service = await asyncio.to_thread(_build_google_calendar_service)
         body = _build_event_body(params)
         if not body:
             return "Error: 沒有提供任何要更新的欄位。"
-        event = (
+        event = await asyncio.to_thread(
             service.events()
             .patch(
                 calendarId=params.calendar_id or "primary",
                 eventId=params.event_id,
                 body=body,
             )
-            .execute()
+            .execute
         )
         return "# ✅ 已更新行事曆事件\n\n" + _format_gcal_event_summary(event)
     except FileNotFoundError as e:
@@ -2072,22 +2075,24 @@ async def gcal_delete_event(params: GcalDeleteEventInput) -> str:
         - scope 不足時請刪除 google_token.json 重新授權
     """
     try:
-        service = _build_google_calendar_service()
+        service = await asyncio.to_thread(_build_google_calendar_service)
         calendar_id = params.calendar_id or "primary"
 
         # 刪除前先讀取事件內容，回報摘要供使用者核對
         deleted_summary = ""
         try:
-            existing = (
+            existing = await asyncio.to_thread(
                 service.events()
                 .get(calendarId=calendar_id, eventId=params.event_id)
-                .execute()
+                .execute
             )
             deleted_summary = _format_gcal_event_summary(existing)
         except Exception as e:
             return f"Error: 無法預檢待刪除的行事曆事件，為安全起見未執行刪除：{e}"
 
-        service.events().delete(calendarId=calendar_id, eventId=params.event_id).execute()
+        await asyncio.to_thread(
+            service.events().delete(calendarId=calendar_id, eventId=params.event_id).execute
+        )
 
         return "# 🗑 已刪除行事曆事件\n\n" + deleted_summary
     except FileNotFoundError as e:
@@ -2136,14 +2141,16 @@ async def gcal_find_free_time(params: GcalFindFreeTimeInput) -> str:
     calendar_ids = params.calendar_ids or ["primary"]
 
     try:
-        service = _build_google_calendar_service()
-        fb = service.freebusy().query(
-            body={
-                "timeMin": t_min.isoformat(),
-                "timeMax": t_max.isoformat(),
-                "items": [{"id": c} for c in calendar_ids],
-            }
-        ).execute()
+        service = await asyncio.to_thread(_build_google_calendar_service)
+        fb = await asyncio.to_thread(
+            service.freebusy().query(
+                body={
+                    "timeMin": t_min.isoformat(),
+                    "timeMax": t_max.isoformat(),
+                    "items": [{"id": c} for c in calendar_ids],
+                }
+            ).execute
+        )
 
         # 合併所有行事曆的忙碌時段
         busy: List["tuple[datetime, datetime]"] = []
