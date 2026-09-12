@@ -123,8 +123,58 @@ def classify_result(text: str) -> Tuple[str, Optional[str]]:
         return "error", "UPSTREAM_HTTP_ERROR"
     if text.startswith("Error: 發生未預期的錯誤"):
         return "error", "INTERNAL_ERROR"
+
+    calendar_code = _classify_calendar_error(text)
+    if calendar_code:
+        return "error", calendar_code
+
     # 其餘為參數驗證類訊息，例如不支援的城市。
     return "error", "INVALID_REQUEST"
+
+
+# Google Calendar 的失敗過去全部落到通用的 INVALID_REQUEST，
+# 但「沒放憑證檔」是設定問題、「權杖過期」要重新授權、「找不到事件」是查詢問題，
+# 三者的處理方式完全不同，呼叫端需要分辨。
+_CALENDAR_MESSAGE_PREFIXES = (
+    "Error: 無法取得行事曆",
+    "Error: 無法建立行事曆",
+    "Error: 無法更新行事曆",
+    "Error: 無法刪除行事曆",
+    "Error: 無法查詢行事曆",
+)
+
+# 這些字串來自被內嵌進訊息的底層例外（googleapiclient / google-auth）。
+_CALENDAR_AUTH_MARKERS = (
+    "invalid_grant", "RefreshError", "has been expired or revoked",
+    "invalid_client", "unauthorized", "Unauthorized", "401",
+)
+_CALENDAR_FORBIDDEN_MARKERS = (
+    "insufficientPermissions", "forbidden", "Forbidden", "403",
+)
+_CALENDAR_NOT_FOUND_MARKERS = ("notFound", "Not Found", "404")
+
+
+def _classify_calendar_error(text: str) -> Optional[str]:
+    """把 Google Calendar 的錯誤訊息對應到專屬代碼；不是行事曆錯誤則回 None。"""
+    # 憑證檔不存在：由 _build_google_calendar_service 丟出 FileNotFoundError，
+    # 各工具以 f"Error: {e}" 原樣回傳，所以比對訊息內容而非前綴。
+    if "Google OAuth2" in text and "憑證檔案" in text:
+        return "CALENDAR_CREDENTIALS_MISSING"
+
+    # 刪除前預檢失敗會 fail closed（沒有真的刪除），值得獨立代碼以便追蹤。
+    if text.startswith("Error: 無法預檢待刪除的行事曆事件"):
+        return "CALENDAR_PREFLIGHT_FAILED"
+
+    if not text.startswith(_CALENDAR_MESSAGE_PREFIXES):
+        return None
+
+    if any(m in text for m in _CALENDAR_AUTH_MARKERS):
+        return "CALENDAR_AUTH_REQUIRED"
+    if any(m in text for m in _CALENDAR_FORBIDDEN_MARKERS):
+        return "CALENDAR_FORBIDDEN"
+    if any(m in text for m in _CALENDAR_NOT_FOUND_MARKERS):
+        return "CALENDAR_NOT_FOUND"
+    return "CALENDAR_ERROR"
 
 
 def _handle_api_error(e: Exception) -> str:
@@ -1539,10 +1589,7 @@ def _cwa_summarize_weekly(town: Dict[str, Any]) -> str:
         pop = f"{d['pop']}%" if d["pop"] is not None else "—"
 
         lo, hi = d["comfort_lo"], d["comfort_hi"]
-        if lo and hi and lo != hi:
-            comfort = f"{lo}至{hi}"
-        else:
-            comfort = hi or lo or "—"
+        comfort = f"{lo}至{hi}" if lo and hi and lo != hi else (hi or lo or "—")
 
         parts = [
             f"**{date}（週{wd}）**",
