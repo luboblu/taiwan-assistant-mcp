@@ -12,6 +12,9 @@
 使用方式：
     python server.py
 
+    # 設定檢查（不會啟動 MCP Server，也不會印出任何金鑰/權杖內容）：
+    python server.py --check-config
+
 必要環境變數：
     CWA_API_KEY          - 中央氣象局 API 授權碼
     TDX_CLIENT_ID        - TDX API Client ID
@@ -23,11 +26,13 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import csv
 import io
 import json
 import os
 import re
+import sys
 import time
 from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
@@ -2277,8 +2282,115 @@ async def gcal_find_free_time(params: GcalFindFreeTimeInput) -> str:
 
 
 # ============================================================
+# 設定檢查（--check-config）
+# ============================================================
+#
+# 目的：三項憑證（CWA / TDX / Google）必須各自到不同網站申請，目前唯一得知
+# 「有沒有設定成功」的方式是直接呼叫工具、看它是否報錯。這裡提供一個獨立指令，
+# 一次回報三者狀態。絕不印出金鑰、密碼或權杖內容本身，只回報「有/沒有」與
+# 「哪裡設定」。CWA / TDX 用一次輕量的已驗證請求確認金鑰真的可用；Google 只檢查
+# 檔案是否存在——刻意不觸發 OAuth 瀏覽器授權流程，因為那會卡住整個程序。
+
+_CHECK_CONFIG_LABELS: Dict[str, str] = {
+    "missing": "❌ 未設定",
+    "invalid": "❌ 憑證錯誤",
+    "unknown": "⚠️ 無法確認（網路問題）",
+    "pending": "🟡 待授權",
+    "ok": "✅ 可用",
+}
+
+
+async def _check_cwa_credential() -> Tuple[str, str]:
+    """檢查 CWA_API_KEY：以一次輕量請求驗證金鑰是否可用。"""
+    api_key = os.environ.get("CWA_API_KEY")
+    if not api_key:
+        return "missing", "環境變數 CWA_API_KEY 未設定（來源：opendata.cwa.gov.tw 個人資訊頁的授權碼）"
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{CWA_BASE_URL}/F-C0032-001",
+                params={"Authorization": api_key, "locationName": "臺北市"},
+                timeout=10.0,
+            )
+    except httpx.HTTPError as e:
+        return "unknown", f"無法連線至中央氣象局 API：{type(e).__name__}"
+
+    if resp.status_code in (401, 403):
+        return "invalid", f"API 回傳 HTTP {resp.status_code}，CWA_API_KEY 可能不正確"
+    if resp.status_code >= 400:
+        return "unknown", f"API 回傳 HTTP {resp.status_code}，無法確認金鑰是否有效"
+    return "ok", "已驗證可用（來源：環境變數 CWA_API_KEY）"
+
+
+async def _check_tdx_credential() -> Tuple[str, str]:
+    """檢查 TDX_CLIENT_ID / TDX_CLIENT_SECRET：以一次 OAuth2 client_credentials 請求驗證。"""
+    client_id = os.environ.get("TDX_CLIENT_ID")
+    client_secret = os.environ.get("TDX_CLIENT_SECRET")
+    missing = [
+        name
+        for name, value in (("TDX_CLIENT_ID", client_id), ("TDX_CLIENT_SECRET", client_secret))
+        if not value
+    ]
+    if missing:
+        return "missing", f"環境變數 {'、'.join(missing)} 未設定（來源：tdx.transportdata.tw 的應用程式金鑰管理）"
+
+    try:
+        await _get_tdx_token()
+    except httpx.HTTPStatusError as e:
+        code = e.response.status_code
+        if code in (400, 401, 403):
+            return "invalid", f"API 回傳 HTTP {code}，TDX_CLIENT_ID / TDX_CLIENT_SECRET 可能不正確"
+        return "unknown", f"API 回傳 HTTP {code}，無法確認憑證是否有效"
+    except httpx.HTTPError as e:
+        return "unknown", f"無法連線至 TDX 認證伺服器：{type(e).__name__}"
+    return "ok", "已取得存取權杖，憑證可用（來源：環境變數 TDX_CLIENT_ID / TDX_CLIENT_SECRET）"
+
+
+def _check_google_credential() -> Tuple[str, str]:
+    """檢查 Google OAuth2 憑證與權杖檔案是否存在。不觸發瀏覽器授權流程，也不讀取檔案內容。"""
+    creds_file = os.environ.get("GOOGLE_CREDENTIALS_FILE", DEFAULT_CREDENTIALS_FILE)
+    token_file = os.environ.get("GOOGLE_TOKEN_FILE", DEFAULT_TOKEN_FILE)
+
+    if not os.path.exists(creds_file):
+        return "missing", f"找不到憑證檔案 {creds_file}（來源：Google Cloud Console 下載的 OAuth 用戶端 ID JSON）"
+    if not os.path.exists(token_file):
+        return "pending", (
+            f"憑證檔案 {creds_file} 已就緒；尚未授權（權杖檔案 {token_file} 不存在，"
+            "首次呼叫行事曆工具時會開啟瀏覽器完成授權）"
+        )
+    return "ok", f"憑證檔案與權杖檔案（{token_file}）皆存在"
+
+
+async def _run_check_config() -> bool:
+    """執行三項憑證檢查並印出報告；回傳是否已可完整運作。絕不印出金鑰/權杖內容。"""
+    cwa_status, cwa_detail = await _check_cwa_credential()
+    tdx_status, tdx_detail = await _check_tdx_credential()
+    google_status, google_detail = _check_google_credential()
+
+    print("台灣生活小助手 — 設定檢查\n")
+    for name, status, detail in (
+        ("中央氣象局 CWA（CWA_API_KEY）", cwa_status, cwa_detail),
+        ("交通部 TDX（TDX_CLIENT_ID / TDX_CLIENT_SECRET）", tdx_status, tdx_detail),
+        ("Google Calendar OAuth2", google_status, google_detail),
+    ):
+        print(f"{_CHECK_CONFIG_LABELS.get(status, status)}  {name}")
+        print(f"    {detail}\n")
+
+    ready = cwa_status == "ok" and tdx_status == "ok" and google_status in ("ok", "pending")
+    print("全部就緒，可以開始使用。" if ready else "尚有未完成的設定，請參考上方訊息與 README.md。")
+    return ready
+
+
+# ============================================================
 # 啟動入口
 # ============================================================
 
 if __name__ == "__main__":
+    if "--check-config" in sys.argv:
+        # Windows 主控台預設 cp950，emoji 標籤會噴 UnicodeEncodeError，強制改用 UTF-8 輸出。
+        # 只在這個分支做，避免影響 mcp.run() 走的 stdio JSON-RPC 通道。
+        with contextlib.suppress(AttributeError, ValueError):
+            sys.stdout.reconfigure(encoding="utf-8")
+        raise SystemExit(0 if asyncio.run(_run_check_config()) else 1)
     mcp.run()
